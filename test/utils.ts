@@ -1,6 +1,11 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { getOptionsToken } from '@nestjs/throttler';
 import { PrismaClient } from '@prisma/client';
+import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/app.setup';
+import { AUTH_THROTTLER } from '../src/auth/auth.constants';
+import { PrismaService } from '../src/prisma/prisma.service';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 
@@ -12,30 +17,24 @@ export interface TestContext {
   http: () => ReturnType<typeof request>;
 }
 
-/**
- * Boots the full application exactly as main.ts does (prefix, pipes, filter, swagger).
- * `env` overrides are applied before the app modules are loaded (isolated module registry), so
- * each call gets its own config — e.g. a low throttle limit.
- */
-export async function createApp(env: Record<string, string> = {}): Promise<TestContext> {
-  const saved = { ...process.env };
-  Object.assign(process.env, env);
-  let AppModule: any;
-  let configureApp: any;
-  let PrismaService: any;
-  jest.isolateModules(() => {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    AppModule = require('../src/app.module').AppModule;
-    configureApp = require('../src/app.setup').configureApp;
-    PrismaService = require('../src/prisma/prisma.service').PrismaService;
-    /* eslint-enable @typescript-eslint/no-require-imports */
-  });
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+export interface CreateAppOptions {
+  /** Overrides the register/login throttle limit (default comes from .env.test). */
+  authThrottleLimit?: number;
+}
+
+/** Boots the full application exactly as main.ts does (prefix, pipes, filter, swagger). */
+export async function createApp(opts: CreateAppOptions = {}): Promise<TestContext> {
+  let builder = Test.createTestingModule({ imports: [AppModule] });
+  if (opts.authThrottleLimit !== undefined) {
+    builder = builder.overrideProvider(getOptionsToken()).useValue({
+      throttlers: [{ name: AUTH_THROTTLER, ttl: 60_000, limit: opts.authThrottleLimit }],
+    });
+  }
+  const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication<INestApplication<App>>({ logger: false });
   configureApp(app);
   await app.init();
-  process.env = saved;
-  const prisma = app.get<PrismaClient>(PrismaService);
+  const prisma = app.get(PrismaService);
   return { app, prisma, http: () => request(app.getHttpServer()) };
 }
 
@@ -80,11 +79,7 @@ export async function registerUser(
     password: PASSWORD,
     ...body,
   };
-  const res = await ctx
-    .http()
-    .post(`${API}/auth/register`)
-    .send(payload)
-    .expect(201);
+  const res = await ctx.http().post(`${API}/auth/register`).send(payload).expect(201);
   return {
     id: res.body.user.id,
     phone: res.body.user.phone,

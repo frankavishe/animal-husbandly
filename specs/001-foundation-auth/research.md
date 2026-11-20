@@ -44,4 +44,4 @@
 - **Decision**: Static TypeScript data file of 31 regions (26 mainland + 5 Zanzibar) with their council districts, seeded via idempotent upserts keyed by region code / `(regionId, name)`.
 
 ## E2E database
-- **Decision**: Separate `db_test` Postgres service on port 5433; `test/setup-e2e.ts` runs `prisma migrate reset --force` once (which also seeds) via Jest `globalSetup`, and tests truncate users/sessions/addresses between suites.
+- **Decision**: Separate `db_test` Postgres service on port 5433; `test/global-setup.ts` runs `prisma migrate deploy` + the idempotent seed once via Jest `globalSetup` (non-destructive; `db_test` is a tmpfs container), and suites delete non-admin users/sessions/addresses before running. `migrate reset` was rejected because it is destructive and Prisma blocks it from AI agents without explicit consent.

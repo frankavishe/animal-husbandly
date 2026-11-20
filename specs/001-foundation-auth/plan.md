@@ -21,7 +21,7 @@ regions/districts, and admin user management (list/search/activate/deactivate).
 `class-validator`/`class-transformer`, `@nestjs/jwt` + `passport-jwt`, `bcrypt`, `@nestjs/throttler`,
 `@nestjs/terminus`, `libphonenumber-js`, `nestjs-pino`
 
-**Storage**: PostgreSQL 16 via `docker compose` (dev on 5432, test on 5433)
+**Storage**: PostgreSQL 16 via `docker compose` (dev on host port 5434, test on 5433)
 
 **Testing**: Jest (unit), Jest + supertest (e2e against the Dockerized test DB)
 

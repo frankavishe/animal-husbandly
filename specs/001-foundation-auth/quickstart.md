@@ -6,7 +6,7 @@ Node.js 24, npm, Docker with Compose.
 ## Setup
 ```bash
 cp .env.example .env            # fill secrets
-docker compose up -d            # db (5432) + db_test (5433)
+docker compose up -d            # db (host port 5434) + db_test (5433)
 npm install
 npx prisma migrate deploy
 npx prisma db seed              # 31 regions + districts, admin from ADMIN_* env
