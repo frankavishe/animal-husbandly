@@ -1,0 +1,34 @@
+import * as Joi from 'joi';
+
+/** Startup configuration schema. All problems are reported at once (abortEarly: false). */
+export const envValidationSchema = Joi.object({
+  NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
+  PORT: Joi.number().port().default(3000),
+  DATABASE_URL: Joi.string()
+    .uri({ scheme: ['postgresql', 'postgres'] })
+    .required(),
+  JWT_ACCESS_SECRET: Joi.string().min(32).required(),
+  JWT_ACCESS_TTL: Joi.number().integer().min(60).default(900),
+  REFRESH_TOKEN_TTL_DAYS: Joi.number().integer().min(1).default(7),
+  BCRYPT_ROUNDS: Joi.number().integer().min(4).max(15).default(10),
+  AUTH_THROTTLE_LIMIT: Joi.number().integer().min(1).default(10),
+  AUTH_THROTTLE_TTL_MS: Joi.number().integer().min(1000).default(60000),
+  LOG_LEVEL: Joi.string()
+    .valid('fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent')
+    .default('info'),
+});
+
+export const envValidationOptions = { abortEarly: false, allowUnknown: true };
+
+export interface AppConfig {
+  NODE_ENV: 'development' | 'production' | 'test';
+  PORT: number;
+  DATABASE_URL: string;
+  JWT_ACCESS_SECRET: string;
+  JWT_ACCESS_TTL: number;
+  REFRESH_TOKEN_TTL_DAYS: number;
+  BCRYPT_ROUNDS: number;
+  AUTH_THROTTLE_LIMIT: number;
+  AUTH_THROTTLE_TTL_MS: number;
+  LOG_LEVEL: string;
+}
