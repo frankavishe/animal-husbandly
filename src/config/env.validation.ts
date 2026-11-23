@@ -16,6 +16,17 @@ export const envValidationSchema = Joi.object({
   LOG_LEVEL: Joi.string()
     .valid('fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent')
     .default('info'),
+  S3_ENDPOINT: Joi.string()
+    .uri({ scheme: ['http', 'https'] })
+    .required(),
+  S3_REGION: Joi.string().required(),
+  S3_BUCKET: Joi.string().required(),
+  S3_ACCESS_KEY_ID: Joi.string().required(),
+  S3_SECRET_ACCESS_KEY: Joi.string().required(),
+  S3_PUBLIC_BASE_URL: Joi.string()
+    .uri({ scheme: ['http', 'https'] })
+    .required(),
+  S3_FORCE_PATH_STYLE: Joi.boolean().default(true),
 });
 
 export const envValidationOptions = { abortEarly: false, allowUnknown: true };
@@ -31,4 +42,11 @@ export interface AppConfig {
   AUTH_THROTTLE_LIMIT: number;
   AUTH_THROTTLE_TTL_MS: number;
   LOG_LEVEL: string;
+  S3_ENDPOINT: string;
+  S3_REGION: string;
+  S3_BUCKET: string;
+  S3_ACCESS_KEY_ID: string;
+  S3_SECRET_ACCESS_KEY: string;
+  S3_PUBLIC_BASE_URL: string;
+  S3_FORCE_PATH_STYLE: boolean;
 }

@@ -15,17 +15,19 @@ enum Role {
 
 /// A person using the marketplace. At least one of phone/email is required (DB CHECK constraint).
 model User {
-  id           String    @id @default(uuid()) @db.Uuid
-  fullName     String    @map("full_name")
-  phone        String?   @unique
-  email        String?   @unique
-  passwordHash String    @map("password_hash")
-  role         Role      @default(CUSTOMER)
-  isActive     Boolean   @default(true) @map("is_active")
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
-  sessions     Session[]
-  addresses    Address[]
+  id              String    @id @default(uuid()) @db.Uuid
+  fullName        String    @map("full_name")
+  phone           String?   @unique
+  email           String?   @unique
+  passwordHash    String    @map("password_hash")
+  role            Role      @default(CUSTOMER)
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  sessions        Session[]
+  addresses       Address[]
+  vendor          Vendor?   @relation("VendorOwner")
+  reviewedVendors Vendor[]  @relation("VendorReviewer")
 
   @@index([role, isActive])
   @@map("users")
@@ -54,6 +56,7 @@ model Region {
   code      String     @unique
   districts District[]
   addresses Address[]
+  vendors   Vendor[]
 
   @@map("regions")
 }
@@ -64,6 +67,7 @@ model District {
   regionId  Int       @map("region_id")
   region    Region    @relation(fields: [regionId], references: [id], onDelete: Restrict)
   addresses Address[]
+  vendors   Vendor[]
 
   @@unique([regionId, name])
   @@map("districts")
@@ -89,4 +93,80 @@ model Address {
 
   @@index([userId])
   @@map("addresses")
+}
+
+enum VendorStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+/// Constitution II: the fixed species catalogue.
+enum Species {
+  CATTLE
+  GOAT
+  SHEEP
+  PIG
+  CHICKEN
+  FISH
+}
+
+enum PayoutMethod {
+  MOBILE_MONEY
+  BANK
+}
+
+enum MobileMoneyProvider {
+  MPESA
+  MIXX_BY_YAS
+  AIRTEL_MONEY
+  HALOPESA
+}
+
+/// A seller's shop; one per user. `species` has ≥ 1 value (CHECK) and a GIN index (migration).
+model Vendor {
+  id              String               @id @default(uuid()) @db.Uuid
+  userId          String               @unique @map("user_id") @db.Uuid
+  user            User                 @relation("VendorOwner", fields: [userId], references: [id], onDelete: Cascade)
+  shopName        String               @map("shop_name")
+  slug            String               @unique
+  description     String               @default("")
+  regionId        Int                  @map("region_id")
+  region          Region               @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  districtId      Int                  @map("district_id")
+  district        District             @relation(fields: [districtId], references: [id], onDelete: Restrict)
+  businessPhone   String               @map("business_phone")
+  species         Species[]
+  logoKey         String?              @map("logo_key")
+  status          VendorStatus         @default(PENDING)
+  rejectionReason String?              @map("rejection_reason")
+  submittedAt     DateTime             @default(now()) @map("submitted_at") @db.Timestamptz(3)
+  reviewedById    String?              @map("reviewed_by_id") @db.Uuid
+  reviewedBy      User?                @relation("VendorReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt      DateTime?            @map("reviewed_at") @db.Timestamptz(3)
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  payoutAccount   VendorPayoutAccount?
+
+  @@index([status])
+  @@index([regionId])
+  @@map("vendors")
+}
+
+/// How a shop is paid. Field/method consistency is enforced by CHECK `payout_method_fields`.
+model VendorPayoutAccount {
+  id            String               @id @default(uuid()) @db.Uuid
+  vendorId      String               @unique @map("vendor_id") @db.Uuid
+  vendor        Vendor               @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  method        PayoutMethod
+  provider      MobileMoneyProvider?
+  mobileNumber  String?              @map("mobile_number")
+  bankName      String?              @map("bank_name")
+  accountNumber String?              @map("account_number")
+  accountName   String               @map("account_name")
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("vendor_payout_accounts")
 }

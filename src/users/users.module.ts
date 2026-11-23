@@ -9,6 +9,6 @@ import { UsersService } from './users.service';
 @Module({
   controllers: [UsersController, AddressesController, RegionsController],
   providers: [UsersService, RegionsService, AddressesService],
-  exports: [UsersService],
+  exports: [UsersService, RegionsService],
 })
 export class UsersModule {}
