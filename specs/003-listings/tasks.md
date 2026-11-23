@@ -57,19 +57,19 @@ No new dependencies or env keys.
 **Goal**: An approved vendor creates, lists, views and edits their own listings; invalid products are impossible.
 **Independent test**: Create cattle LIVE_ANIMAL and chicken EGGS listings, goat MILK and cattle EGGS return 400, list mine, edit a price, another vendor gets 404.
 
-- [ ] T009 [P] [US1] Request DTOs in `src/listings/dto/create-listing.dto.ts`:
+- [X] T009 [P] [US1] Request DTOs in `src/listings/dto/create-listing.dto.ts`:
   - `CreateListingDto`: `title` "3–120 chars", trimmed; `description?` "≤ 2000 chars"; `species` IsEnum(Species); `listingType` IsEnum(ListingType); `unit` IsEnum(ListingUnit); `unitPrice` IsInt 1–1,000,000,000; `stockQuantity` IsInt 0–1,000,000; `breed?` "2–60 chars", trimmed; `sex?` IsEnum(AnimalSex); `ageMonths?` IsInt 0–600; `weightKg?` `IsNumber({ maxDecimalPlaces: 1 })` 0.1–2000
   - `UpdateListingDto = PartialType(CreateListingDto)`, where `breed`, `sex`, `ageMonths`, `weightKg` accept `null` (`@ValidateIf((_, v) => v !== null)`) meaning "clear"
   - `VendorListListingsQueryDto` extends `PaginationQueryDto` with `status?` IsEnum(ListingStatus)
-- [ ] T010 [US1] `ListingsService` (vendor part) in `src/listings/listings.service.ts`, using `VendorsService.findMine(userId)`:
+- [X] T010 [US1] `ListingsService` (vendor part) in `src/listings/listings.service.ts`, using `VendorsService.findMine(userId)`:
   - `assertShopApproved(vendor)`: SUSPENDED → 403 `Your shop is suspended`; PENDING/REJECTED → 403 `Your shop is not approved`
   - `create(userId, dto)`: shop gate; `dto.species` not in `vendor.species` → 400 `Your shop does not deal in <SPECIES>`; `validateListing(dto)`; create with status DRAFT; return `toOwnerListing`
   - `listMine(userId, q)`: `where { vendorId, status: q.status ?? { not: ARCHIVED } }`, order `createdAt desc, id asc`, paginated
   - `getMine(userId, id)`: `findFirst({ id, vendorId })` else 404 `Listing not found`
   - `updateMine(userId, id, dto)`: load own listing; ARCHIVED → 409 `Cannot edit a listing that is ARCHIVED`; shop gate; `species` or `listingType` differing from current while status ≠ DRAFT → 409 `Species and listing type can only be changed while the listing is DRAFT (current: <STATUS>)`; species changed and not in shop → 400; merge (`undefined` keeps, `null` clears) then `validateListing(merged)`; update and return owner shape
-- [ ] T011 [US1] `VendorListingsController` (`@ApiTags('listings')`, `@ApiBearerAuth`, `@Roles(Role.VENDOR)`, `@Controller('vendors/me/listings')`) in `src/listings/vendor-listings.controller.ts`: `POST` (201), `GET`, `GET :id` (ParseUUIDPipe), `PATCH :id`, returning `OwnerListingDto` / paginated; register controller and service in `ListingsModule`
-- [ ] T012 [P] [US1] Unit tests in `src/listings/listings.service.spec.ts` (mocked Prisma, VendorsService, StorageService): create success as DRAFT; PENDING/SUSPENDED shop → 403; species not in shop → 400; GOAT+MILK → 400 with the rule message; foreign id → 404; species change on ACTIVE → 409; species change on DRAFT re-validated; `null` clears animal fields when switching DRAFT to MEAT; ARCHIVED edit → 409
-- [ ] T013 [US1] E2E in `test/listings.e2e-spec.ts` (describe "vendor"):
+- [X] T011 [US1] `VendorListingsController` (`@ApiTags('listings')`, `@ApiBearerAuth`, `@Roles(Role.VENDOR)`, `@Controller('vendors/me/listings')`) in `src/listings/vendor-listings.controller.ts`: `POST` (201), `GET`, `GET :id` (ParseUUIDPipe), `PATCH :id`, returning `OwnerListingDto` / paginated; register controller and service in `ListingsModule`
+- [X] T012 [P] [US1] Unit tests in `src/listings/listings.service.spec.ts` (mocked Prisma, VendorsService, StorageService): create success as DRAFT; PENDING/SUSPENDED shop → 403; species not in shop → 400; GOAT+MILK → 400 with the rule message; foreign id → 404; species change on ACTIVE → 409; species change on DRAFT re-validated; `null` clears animal fields when switching DRAFT to MEAT; ARCHIVED edit → 409
+- [X] T013 [US1] E2E in `test/listings.e2e-spec.ts` (describe "vendor"):
   - Spec US1 scenarios 1–11 (including CHICKEN EGGS TRAY 201, MILK by KG 400, MEAT with `breed` 400, price 0 / 1.5 → 400, stock -1 → 400, weight 350.55 → 400 and 350.5 → 201, group GOAT MIXED stock 10 → 201)
   - CUSTOMER (no shop) → 403; PENDING shop vendor → 403; unknown field → 400; unauthenticated → 401
   - DB level (SC-002): `prisma.$executeRaw` inserting a GOAT/MILK row for an approved vendor rejects with a `listings_species_type` violation
@@ -81,14 +81,14 @@ No new dependencies or env keys.
 **Goal**: Vendors control what buyers see through the DRAFT/ACTIVE/INACTIVE/ARCHIVED lifecycle.
 **Independent test**: Publish, pause, activate, archive; each invalid step returns 409 naming the current status.
 
-- [ ] T014 [US2] Add to `src/listings/listings.service.ts` a private `transition(userId, id, action, from: ListingStatus[], to, data, opts: { requireApproved: boolean })` that resolves the shop, applies the shop gate when required, runs `updateMany({ where: { id, vendorId, status: { in: from } }, data })`, and on `count === 0` loads the listing → 404 `Listing not found` or 409 `Cannot <action> a listing that is <STATUS>`. Public methods:
+- [X] T014 [US2] Add to `src/listings/listings.service.ts` a private `transition(userId, id, action, from: ListingStatus[], to, data, opts: { requireApproved: boolean })` that resolves the shop, applies the shop gate when required, runs `updateMany({ where: { id, vendorId, status: { in: from } }, data })`, and on `count === 0` loads the listing → 404 `Listing not found` or 409 `Cannot <action> a listing that is <STATUS>`. Public methods:
   - `publish`: DRAFT → ACTIVE, sets `publishedAt = now`, requires approved shop
   - `pause`: ACTIVE → INACTIVE (no shop gate)
   - `activate`: INACTIVE → ACTIVE, keeps `publishedAt`, requires approved shop
   - `archive`: DRAFT/ACTIVE/INACTIVE/TAKEN_DOWN → ARCHIVED, sets `archivedAt = now` (no shop gate)
-- [ ] T015 [US2] Add `POST :id/publish|pause|activate|archive` (HttpCode 200, `@ApiConflictResponse`) to `src/listings/vendor-listings.controller.ts`
-- [ ] T016 [P] [US2] Unit tests in `src/listings/listings.service.spec.ts`: each valid transition; each invalid (action, status) pair → 409 containing the status; publish on SUSPENDED shop → 403 while pause and archive succeed; `publishedAt` not overwritten by activate; TAKEN_DOWN publish/activate → 409
-- [ ] T017 [US2] E2E in `test/listings.e2e-spec.ts` (describe "lifecycle"): spec US2 scenarios 1–6, including stock 0 publishable, archived listing hidden from `GET /vendors/me/listings` but returned with `status=ARCHIVED`, edit after archive → 409, and after admin suspends the shop `PATCH` → 403 while `pause` → 200
+- [X] T015 [US2] Add `POST :id/publish|pause|activate|archive` (HttpCode 200, `@ApiConflictResponse`) to `src/listings/vendor-listings.controller.ts`
+- [X] T016 [P] [US2] Unit tests in `src/listings/listings.service.spec.ts`: each valid transition; each invalid (action, status) pair → 409 containing the status; publish on SUSPENDED shop → 403 while pause and archive succeed; `publishedAt` not overwritten by activate; TAKEN_DOWN publish/activate → 409
+- [X] T017 [US2] E2E in `test/listings.e2e-spec.ts` (describe "lifecycle"): spec US2 scenarios 1–6, including stock 0 publishable, archived listing hidden from `GET /vendors/me/listings` but returned with `status=ARCHIVED`, edit after archive → 409, and after admin suspends the shop `PATCH` → 403 while `pause` → 200
 
 **Checkpoint**: MVP complete (US1 + US2).
 
@@ -97,14 +97,14 @@ No new dependencies or env keys.
 **Goal**: Anyone finds ACTIVE listings of visible shops with filters, search and sorting, without private data.
 **Independent test**: With listings in every status across shops in every status, only visible ones appear; filters and sorts work; no private keys.
 
-- [ ] T018 [P] [US3] `PublicListListingsQueryDto` in `src/listings/dto/public-list-listings.dto.ts`: extends `PaginationQueryDto`; `species?`, `listingType?` enums; `regionId?`, `districtId?` positive ints; `shop?` "≤ 100 chars"; `minPrice?`, `maxPrice?` ints 0–1,000,000,000; `inStock?` boolean (`@Transform` `'true'`/`'false'` → boolean, else invalid); `search?` "≤ 100 chars"; `sort?` IsIn(`newest`, `price_asc`, `price_desc`) default `newest`
-- [ ] T019 [US3] Add to `src/listings/listings.service.ts`:
+- [X] T018 [P] [US3] `PublicListListingsQueryDto` in `src/listings/dto/public-list-listings.dto.ts`: extends `PaginationQueryDto`; `species?`, `listingType?` enums; `regionId?`, `districtId?` positive ints; `shop?` "≤ 100 chars"; `minPrice?`, `maxPrice?` ints 0–1,000,000,000; `inStock?` boolean (`@Transform` `'true'`/`'false'` → boolean, else invalid); `search?` "≤ 100 chars"; `sort?` IsIn(`newest`, `price_asc`, `price_desc`) default `newest`
+- [X] T019 [US3] Add to `src/listings/listings.service.ts`:
   - `static publicWhere(q)`: `{ status: ACTIVE, vendor: { ...PUBLIC_VENDOR_WHERE, regionId?, districtId?, slug? } }` plus `species`, `listingType`, `unitPrice: { gte, lte }`, `stockQuantity: { gt: 0 }` when `inStock`, and `OR [title contains, description contains]` (mode insensitive) for `search`
   - `listPublic(q)`: `minPrice > maxPrice` → 400 `minPrice must not exceed maxPrice`; orderBy `newest` → `[publishedAt desc, id asc]`, `price_asc` → `[unitPrice asc, id asc]`, `price_desc` → `[unitPrice desc, id asc]`; paginated `toPublicListing`
   - `getPublic(id)`: same visibility, else 404 `Listing not found`
-- [ ] T020 [US3] `PublicListingsController` (`@Public()`, `@ApiTags('listings')`, `@Controller('listings')`) in `src/listings/public-listings.controller.ts`: `GET /listings`, `GET /listings/:id` (ParseUUIDPipe); register in `ListingsModule`
-- [ ] T021 [P] [US3] Unit tests: `publicWhere`/orderBy composition and min>max 400 in `src/listings/listings.service.spec.ts`; `src/listings/listing.mapper.spec.ts` asserting `toPublicListing` keys are exactly those in FR-019, `animal` null for MEAT, `weightKg` numeric, `coverUrl` = position 0
-- [ ] T022 [US3] E2E in `test/listings.e2e-spec.ts` (describe "public"): seed listings in DRAFT/ACTIVE/INACTIVE/ARCHIVED/TAKEN_DOWN (set TAKEN_DOWN via Prisma), an ACTIVE listing of a suspended shop and of a deactivated owner; anonymous list returns only visible ones; filters species, listingType, regionId, districtId, shop, minPrice/maxPrice, inStock, search `boran` (case-insensitive) each narrow results; sorts `price_asc`/`price_desc` order correctly; detail has `shop` summary and none of `status`, `takenDownReason`, `vendor`, `payoutAccount`; hidden id → 404; `minPrice=5&maxPrice=1` → 400; `limit=101` → 400
+- [X] T020 [US3] `PublicListingsController` (`@Public()`, `@ApiTags('listings')`, `@Controller('listings')`) in `src/listings/public-listings.controller.ts`: `GET /listings`, `GET /listings/:id` (ParseUUIDPipe); register in `ListingsModule`
+- [X] T021 [P] [US3] Unit tests: `publicWhere`/orderBy composition and min>max 400 in `src/listings/listings.service.spec.ts`; `src/listings/listing.mapper.spec.ts` asserting `toPublicListing` keys are exactly those in FR-019, `animal` null for MEAT, `weightKg` numeric, `coverUrl` = position 0
+- [X] T022 [US3] E2E in `test/listings.e2e-spec.ts` (describe "public"): seed listings in DRAFT/ACTIVE/INACTIVE/ARCHIVED/TAKEN_DOWN (set TAKEN_DOWN via Prisma), an ACTIVE listing of a suspended shop and of a deactivated owner; anonymous list returns only visible ones; filters species, listingType, regionId, districtId, shop, minPrice/maxPrice, inStock, search `boran` (case-insensitive) each narrow results; sorts `price_asc`/`price_desc` order correctly; detail has `shop` summary and none of `status`, `takenDownReason`, `vendor`, `payoutAccount`; hidden id → 404; `minPrice=5&maxPrice=1` → 400; `limit=101` → 400
 
 ## Phase 6: User Story 4: Listing photos (P2)
 
