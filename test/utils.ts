@@ -64,6 +64,8 @@ export async function createApp(opts: CreateAppOptions = {}): Promise<TestContex
 
 /** Removes all non-admin users (cascades sessions/addresses), all shops and every admin session. */
 export async function resetUsers(prisma: PrismaClient): Promise<void> {
+  await prisma.listingPhoto.deleteMany({});
+  await prisma.listing.deleteMany({});
   await prisma.vendorPayoutAccount.deleteMany({});
   await prisma.vendor.deleteMany({});
   await prisma.session.deleteMany({});
@@ -189,4 +191,69 @@ export async function createVendor(
   const vendor = await applyVendor(ctx, user.accessToken, opts.overrides);
   if (opts.approve) await approveVendor(ctx, adminToken, vendor.id);
   return { user, vendor };
+}
+
+/** Minimal buffers that pass magic-byte detection. */
+export const PNG = Buffer.concat([
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  Buffer.alloc(64, 1),
+]);
+export const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(64, 2)]);
+
+export interface ListingBody {
+  title: string;
+  description?: string;
+  species: string;
+  listingType: string;
+  unit: string;
+  unitPrice: number;
+  stockQuantity: number;
+  breed?: string | null;
+  sex?: string | null;
+  ageMonths?: number | null;
+  weightKg?: number | null;
+}
+
+/** A valid LIVE_ANIMAL cattle listing (the shop must deal in CATTLE). */
+export function validListingBody(overrides: Partial<ListingBody> = {}): ListingBody {
+  return {
+    title: 'Boran heifer',
+    description: 'Healthy and vaccinated',
+    species: 'CATTLE',
+    listingType: 'LIVE_ANIMAL',
+    unit: 'HEAD',
+    unitPrice: 1200000,
+    stockQuantity: 3,
+    breed: 'Boran',
+    sex: 'FEMALE',
+    ageMonths: 30,
+    ...overrides,
+  };
+}
+
+type Json = any;
+
+/** Creates a listing as `token`'s shop (asserts 201) and returns the owner view. */
+export async function createListing(
+  ctx: TestContext,
+  token: string,
+  overrides: Partial<ListingBody> = {},
+): Promise<Json> {
+  const res = await ctx
+    .http()
+    .post(`${API}/vendors/me/listings`)
+    .set(bearer(token))
+    .send(validListingBody(overrides))
+    .expect(201);
+  return res.body;
+}
+
+/** Publishes a listing (asserts 200) and returns the owner view. */
+export async function publishListing(ctx: TestContext, token: string, id: string): Promise<Json> {
+  const res = await ctx
+    .http()
+    .post(`${API}/vendors/me/listings/${id}/publish`)
+    .set(bearer(token))
+    .expect(200);
+  return res.body;
 }

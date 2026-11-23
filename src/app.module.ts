@@ -10,6 +10,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { HealthModule } from './common/health/health.module';
 import { AppConfig, envValidationOptions, envValidationSchema } from './config/env.validation';
+import { ListingsModule } from './listings/listings.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { StorageModule } from './common/storage';
 import { UsersModule } from './users/users.module';
@@ -59,6 +60,7 @@ import { VendorsModule } from './vendors/vendors.module';
     UsersModule,
     AuthModule,
     VendorsModule,
+    ListingsModule,
     AdminModule,
   ],
   providers: [

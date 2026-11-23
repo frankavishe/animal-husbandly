@@ -28,6 +28,7 @@ model User {
   addresses       Address[]
   vendor          Vendor?   @relation("VendorOwner")
   reviewedVendors Vendor[]  @relation("VendorReviewer")
+  takenDownListings Listing[] @relation("ListingTakenDownBy")
 
   @@index([role, isActive])
   @@map("users")
@@ -148,6 +149,7 @@ model Vendor {
   createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
   payoutAccount   VendorPayoutAccount?
+  listings        Listing[]
 
   @@index([status])
   @@index([regionId])
@@ -169,4 +171,84 @@ model VendorPayoutAccount {
   updatedAt     DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("vendor_payout_accounts")
+}
+
+/// Constitution II: the only kinds of product that may be listed.
+enum ListingType {
+  LIVE_ANIMAL
+  MEAT
+  MILK
+  EGGS
+}
+
+/// TRAY = 30 eggs.
+enum ListingUnit {
+  HEAD
+  KG
+  PIECE
+  LITRE
+  TRAY
+}
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+  TAKEN_DOWN
+}
+
+enum AnimalSex {
+  MALE
+  FEMALE
+  MIXED
+}
+
+/// A product offered by a shop. Species/type, unit/type, live-animal fields and numeric ranges are
+/// enforced by CHECK constraints in the `listings` migration (and mirrored in listing-rules.ts).
+model Listing {
+  id              String         @id @default(uuid()) @db.Uuid
+  vendorId        String         @map("vendor_id") @db.Uuid
+  vendor          Vendor         @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  title           String
+  description     String         @default("")
+  species         Species
+  listingType     ListingType    @map("listing_type")
+  unit            ListingUnit
+  unitPrice       Int            @map("unit_price")
+  stockQuantity   Int            @map("stock_quantity")
+  breed           String?
+  sex             AnimalSex?
+  ageMonths       Int?           @map("age_months")
+  weightKg        Decimal?       @map("weight_kg") @db.Decimal(5, 1)
+  status          ListingStatus  @default(DRAFT)
+  publishedAt     DateTime?      @map("published_at") @db.Timestamptz(3)
+  archivedAt      DateTime?      @map("archived_at") @db.Timestamptz(3)
+  takenDownReason String?        @map("taken_down_reason")
+  takenDownById   String?        @map("taken_down_by_id") @db.Uuid
+  takenDownBy     User?          @relation("ListingTakenDownBy", fields: [takenDownById], references: [id], onDelete: SetNull)
+  takenDownAt     DateTime?      @map("taken_down_at") @db.Timestamptz(3)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  photos          ListingPhoto[]
+
+  @@index([status, publishedAt])
+  @@index([vendorId, status])
+  @@index([species])
+  @@index([listingType])
+  @@index([unitPrice])
+  @@map("listings")
+}
+
+/// Up to 5 per listing; position 0 is the cover (CHECK `listing_photos_position`).
+model ListingPhoto {
+  id        String   @id @default(uuid()) @db.Uuid
+  listingId String   @map("listing_id") @db.Uuid
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  key       String
+  position  Int
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([listingId, position])
+  @@map("listing_photos")
 }

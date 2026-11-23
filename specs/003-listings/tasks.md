@@ -16,36 +16,36 @@ Format: `[ID] [P?] [Story] Description`. `[P]` means the task can run in paralle
 
 No new dependencies or env keys.
 
-- [ ] T001 Generalise the logo upload interceptor into `src/common/upload/image-upload.interceptor.ts`:
+- [X] T001 Generalise the logo upload interceptor into `src/common/upload/image-upload.interceptor.ts`:
   - Export `createImageUploadInterceptor(maxBytes: number, label: string)` returning an injectable interceptor class that wraps `FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: maxBytes, files: 1 } })` and maps `PayloadTooLargeException` to 413 `<label> must be at most <N> MB`
   - Switch `src/vendors/vendors.controller.ts` to `createImageUploadInterceptor(2 * 1024 * 1024, 'Logo')`, keep `MAX_LOGO_BYTES` exported from the new location if referenced, and delete `src/vendors/logo-upload.interceptor.ts`
   - `test/vendors.e2e-spec.ts` must still pass unchanged (413 message `Logo must be at most 2 MB`)
-- [ ] T002 [P] In `src/vendors/vendors.service.ts`, rename the private `PUBLIC_WHERE` to an exported `PUBLIC_VENDOR_WHERE: Prisma.VendorWhereInput = { status: APPROVED, user: { isActive: true } }` and use it in `publicWhere` and `getPublicBySlug` (no behaviour change)
+- [X] T002 [P] In `src/vendors/vendors.service.ts`, rename the private `PUBLIC_WHERE` to an exported `PUBLIC_VENDOR_WHERE: Prisma.VendorWhereInput = { status: APPROVED, user: { isActive: true } }` and use it in `publicWhere` and `getPublicBySlug` (no behaviour change)
 
 ## Phase 2: Foundational (blocks all stories)
 
-- [ ] T003 Add the following to `prisma/schema.prisma`, using the exact fields, maps, FKs and indexes from `data-model.md`:
+- [X] T003 Add the following to `prisma/schema.prisma`, using the exact fields, maps, FKs and indexes from `data-model.md`:
   - Enums `ListingType { LIVE_ANIMAL MEAT MILK EGGS }`, `ListingUnit { HEAD KG PIECE LITRE TRAY }`, `ListingStatus { DRAFT ACTIVE INACTIVE ARCHIVED TAKEN_DOWN }`, `AnimalSex { MALE FEMALE MIXED }`
   - Model `Listing` (`listings`): `vendorId` → vendors onDelete Cascade; `title`; `description` default `""`; `species Species`; `listingType`; `unit`; `unitPrice Int`; `stockQuantity Int`; `breed String?`; `sex AnimalSex?`; `ageMonths Int?`; `weightKg Decimal? @db.Decimal(5, 1)`; `status` default DRAFT; `publishedAt`, `archivedAt`, `takenDownAt` `DateTime? @db.Timestamptz(3)`; `takenDownReason String?`; `takenDownById` → users onDelete SetNull (relation `ListingTakenDownBy`); `createdAt`/`updatedAt`; `@@index([status, publishedAt])`, `@@index([vendorId, status])`, `@@index([species])`, `@@index([listingType])`, `@@index([unitPrice])`
   - Model `ListingPhoto` (`listing_photos`): `listingId` → listings onDelete Cascade; `key`; `position Int`; `createdAt`; `@@index([listingId, position])`
   - Relations `Vendor.listings Listing[]` and `User.takenDownListings Listing[] @relation("ListingTakenDownBy")`
-- [ ] T004 Create migration `listings` with `npx prisma migrate dev --create-only --name listings`, then append raw SQL exactly as in `data-model.md`, and apply it to the dev and test databases:
+- [X] T004 Create migration `listings` with `npx prisma migrate dev --create-only --name listings`, then append raw SQL exactly as in `data-model.md`, and apply it to the dev and test databases:
   - CHECK `listings_species_type`: `listing_type IN ('LIVE_ANIMAL','MEAT') OR (listing_type='MILK' AND species='CATTLE') OR (listing_type='EGGS' AND species='CHICKEN')`
   - CHECK `listings_unit_type`: LIVE_ANIMAL→HEAD/KG; MEAT→KG/PIECE; MILK→LITRE; EGGS→PIECE/TRAY
   - CHECK `listings_animal_fields`: LIVE_ANIMAL ⇒ breed, sex, age_months NOT NULL; otherwise breed, sex, age_months, weight_kg all NULL
   - CHECK `listings_ranges`: unit_price 1–1000000000; stock_quantity 0–1000000; age_months NULL or 0–600; weight_kg NULL or 0.1–2000
   - CHECK `listing_photos_position`: `position BETWEEN 0 AND 4`
-- [ ] T005 [P] Add the pure rules module `src/listings/listing-rules.ts`:
+- [X] T005 [P] Add the pure rules module `src/listings/listing-rules.ts`:
   - `ALLOWED_UNITS: Record<ListingType, ListingUnit[]>` = LIVE_ANIMAL [HEAD, KG], MEAT [KG, PIECE], MILK [LITRE], EGGS [PIECE, TRAY]
   - `isAllowedCombination(species, type)`: LIVE_ANIMAL/MEAT any species; MILK only CATTLE; EGGS only CHICKEN
   - `validateListing(l: { species, listingType, unit, breed?, sex?, ageMonths?, weightKg? })` throws `BadRequestException` with messages `MILK listings are only allowed for CATTLE`, `EGGS listings are only allowed for CHICKEN`, `Unit <UNIT> is not allowed for <TYPE> listings`, `LIVE_ANIMAL listings require breed, sex and ageMonths`, `<field> is only allowed for LIVE_ANIMAL listings`
   - Unit tests in `src/listings/listing-rules.spec.ts`: all 24 species × type combinations (the 10 invalid pairs — MILK for GOAT, SHEEP, PIG, CHICKEN, FISH and EGGS for CATTLE, GOAT, SHEEP, PIG, FISH — fail; the other 14 pass), every allowed/disallowed unit per type, LIVE_ANIMAL missing each required field, each animal field on MEAT/MILK/EGGS
-- [ ] T006 Response DTOs and mapper:
+- [X] T006 Response DTOs and mapper:
   - In `src/listings/dto/listing-response.dto.ts`: `AnimalDto { breed, sex, ageMonths, weightKg: number|null }`, `PhotoDto { id, url, position }`, `ShopSummaryDto { slug, shopName, region:{id,name}, district:{id,name} }`, `PublicListingDto`, `OwnerListingDto` (adds `status, takenDownReason, takenDownAt, archivedAt, createdAt, updatedAt`), `AdminListingDto` (adds `vendor:{id,slug,shopName,status}`, `takenDownBy:{id,fullName}|null`), and paginated wrappers, all with `@ApiProperty`, matching `contracts/api.md`
   - In `src/listings/listing.mapper.ts`: `listingInclude` (photos ordered by position, vendor with region/district, takenDownBy) and pure `toPublicListing(l, storage)`, `toOwnerListing`, `toAdminListing` that whitelist fields; `weightKg` via `Number(decimal)` or null; `inStock = stockQuantity > 0`; `animal` null unless LIVE_ANIMAL; `coverUrl` = first photo url or null
   - `src/listings/dto/index.ts` barrel
-- [ ] T007 Create `ListingsModule` (imports `VendorsModule`; providers/controllers filled in by the stories) in `src/listings/listings.module.ts`, and register it in `src/app.module.ts`
-- [ ] T008 E2E harness updates in `test/utils.ts`:
+- [X] T007 Create `ListingsModule` (imports `VendorsModule`; providers/controllers filled in by the stories) in `src/listings/listings.module.ts`, and register it in `src/app.module.ts`
+- [X] T008 E2E harness updates in `test/utils.ts`:
   - `resetUsers` deletes `listingPhoto` and `listing` rows before vendors
   - Move the `PNG` buffer from `test/vendors.e2e-spec.ts` into exported `PNG` / `JPEG` (`FF D8 FF` + padding) constants and import them back in the vendor spec
   - Helpers `validListingBody(overrides?)` (CATTLE, LIVE_ANIMAL, HEAD, unitPrice 1200000, stockQuantity 3, breed `Boran`, sex FEMALE, ageMonths 30), `createListing(ctx, token, overrides?)` (asserts 201, returns body) and `publishListing(ctx, token, id)` (asserts 200)

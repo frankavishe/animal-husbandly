@@ -33,8 +33,8 @@ export interface UploadedImage {
   size: number;
 }
 
-/** Visibility rule for anonymous browsing (FR-016/018). */
-const PUBLIC_WHERE: Prisma.VendorWhereInput = {
+/** Visibility rule for anonymous browsing (FR-016/018); also used for public listings. */
+export const PUBLIC_VENDOR_WHERE: Prisma.VendorWhereInput = {
   status: VendorStatus.APPROVED,
   user: { isActive: true },
 };
@@ -190,7 +190,7 @@ export class VendorsService {
 
   async getPublicBySlug(slug: string): Promise<PublicVendorDto> {
     const vendor = await this.prisma.vendor.findFirst({
-      where: { ...PUBLIC_WHERE, slug },
+      where: { ...PUBLIC_VENDOR_WHERE, slug },
       include: vendorInclude,
     });
     if (!vendor) throw new NotFoundException('Shop not found');
@@ -198,7 +198,7 @@ export class VendorsService {
   }
 
   static publicWhere(q: PublicListVendorsQueryDto): Prisma.VendorWhereInput {
-    const where: Prisma.VendorWhereInput = { ...PUBLIC_WHERE };
+    const where: Prisma.VendorWhereInput = { ...PUBLIC_VENDOR_WHERE };
     if (q.regionId) where.regionId = q.regionId;
     if (q.districtId) where.districtId = q.districtId;
     if (q.species) where.species = { has: q.species };

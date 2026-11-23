@@ -34,9 +34,12 @@ import {
   UpdateVendorDto,
   UpsertPayoutAccountDto,
 } from './dto';
-import { LogoUploadInterceptor } from './logo-upload.interceptor';
+import { createImageUploadInterceptor } from '../common/upload/image-upload.interceptor';
 import { PayoutAccountsService } from './payout-accounts.service';
 import { UploadedImage, VendorsService } from './vendors.service';
+
+export const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+const LogoUploadInterceptor = createImageUploadInterceptor(MAX_LOGO_BYTES, 'Logo');
 
 @ApiTags('vendors')
 @ApiBearerAuth()
