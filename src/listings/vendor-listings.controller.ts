@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -8,36 +9,52 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiBody,
   ApiConflictResponse,
+  ApiConsumes,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiPayloadTooLargeResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { AuthUser, CurrentUser, Roles } from '../common/decorators';
+import { createImageUploadInterceptor } from '../common/upload/image-upload.interceptor';
+import { UploadedImage } from '../vendors/vendors.service';
 import {
   CreateListingDto,
   OwnerListingDto,
   PaginatedOwnerListingsDto,
+  ReorderPhotosDto,
   UpdateListingDto,
   VendorListListingsQueryDto,
 } from './dto';
+import { ListingPhotosService } from './listing-photos.service';
 import { ListingsService } from './listings.service';
+
+export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const PhotoUploadInterceptor = createImageUploadInterceptor(MAX_PHOTO_BYTES, 'Photo');
 
 @ApiTags('listings')
 @ApiBearerAuth()
 @Roles(Role.VENDOR)
 @Controller('vendors/me/listings')
 export class VendorListingsController {
-  constructor(private readonly listings: ListingsService) {}
+  constructor(
+    private readonly listings: ListingsService,
+    private readonly photos: ListingPhotosService,
+  ) {}
 
   // ---------------------------------------------------------------- details (US1)
 
@@ -144,5 +161,64 @@ export class VendorListingsController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<OwnerListingDto> {
     return this.listings.archive(user.id, id);
+  }
+
+  // ---------------------------------------------------------------- photos (US4)
+
+  @Post(':id/photos')
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(PhotoUploadInterceptor)
+  @ApiOperation({
+    summary: 'Add a photo (JPEG, PNG or WebP, max 5 MB; up to 5 per listing, appended last)',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiCreatedResponse({ type: OwnerListingDto })
+  @ApiBadRequestResponse({ description: 'Missing file or not a JPEG/PNG/WebP image' })
+  @ApiForbiddenResponse({ description: 'Shop is not approved or is suspended' })
+  @ApiNotFoundResponse({ description: 'Listing not found' })
+  @ApiConflictResponse({ description: 'Listing is ARCHIVED or already has 5 photos' })
+  @ApiPayloadTooLargeResponse({ description: 'File larger than 5 MB' })
+  addPhoto(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: UploadedImage | undefined,
+  ): Promise<OwnerListingDto> {
+    return this.photos.add(user.id, id, file);
+  }
+
+  @Delete(':id/photos/:photoId')
+  @ApiOperation({ summary: 'Remove a photo (later photos move up one position)' })
+  @ApiOkResponse({ type: OwnerListingDto })
+  @ApiForbiddenResponse({ description: 'Shop is not approved or is suspended' })
+  @ApiNotFoundResponse({ description: 'Listing or photo not found' })
+  @ApiConflictResponse({ description: 'Listing is ARCHIVED' })
+  removePhoto(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('photoId', ParseUUIDPipe) photoId: string,
+  ): Promise<OwnerListingDto> {
+    return this.photos.remove(user.id, id, photoId);
+  }
+
+  @Put(':id/photos/order')
+  @ApiOperation({ summary: 'Reorder photos (list every photo id once; first becomes the cover)' })
+  @ApiOkResponse({ type: OwnerListingDto })
+  @ApiBadRequestResponse({ description: 'photoIds is not exactly the set of current photos' })
+  @ApiForbiddenResponse({ description: 'Shop is not approved or is suspended' })
+  @ApiNotFoundResponse({ description: 'Listing not found' })
+  @ApiConflictResponse({ description: 'Listing is ARCHIVED' })
+  reorderPhotos(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReorderPhotosDto,
+  ): Promise<OwnerListingDto> {
+    return this.photos.reorder(user.id, id, dto.photoIds);
   }
 }
