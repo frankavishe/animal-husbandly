@@ -11,7 +11,9 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { HealthModule } from './common/health/health.module';
 import { AppConfig, envValidationOptions, envValidationSchema } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
+import { StorageModule } from './common/storage';
 import { UsersModule } from './users/users.module';
+import { VendorsModule } from './vendors/vendors.module';
 
 @Module({
   imports: [
@@ -52,9 +54,11 @@ import { UsersModule } from './users/users.module';
       ],
     }),
     PrismaModule,
+    StorageModule,
     HealthModule,
     UsersModule,
     AuthModule,
+    VendorsModule,
     AdminModule,
   ],
   providers: [

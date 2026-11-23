@@ -5,15 +5,36 @@ import { PrismaClient } from '@prisma/client';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { AUTH_THROTTLER } from '../src/auth/auth.constants';
+import { StorageService } from '../src/common/storage';
 import { PrismaService } from '../src/prisma/prisma.service';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 
 export const API = '/api/v1';
 
+/** In-memory object storage so e2e tests never need MinIO. */
+export class InMemoryStorage extends StorageService {
+  readonly objects = new Map<string, { body: Buffer; contentType: string }>();
+
+  put(key: string, body: Buffer, contentType: string): Promise<void> {
+    this.objects.set(key, { body, contentType });
+    return Promise.resolve();
+  }
+
+  delete(key: string): Promise<void> {
+    this.objects.delete(key);
+    return Promise.resolve();
+  }
+
+  publicUrl(key: string): string {
+    return `http://storage.test/${key}`;
+  }
+}
+
 export interface TestContext {
   app: INestApplication<App>;
   prisma: PrismaClient;
+  storage: InMemoryStorage;
   http: () => ReturnType<typeof request>;
 }
 
@@ -24,7 +45,10 @@ export interface CreateAppOptions {
 
 /** Boots the full application exactly as main.ts does (prefix, pipes, filter, swagger). */
 export async function createApp(opts: CreateAppOptions = {}): Promise<TestContext> {
-  let builder = Test.createTestingModule({ imports: [AppModule] });
+  const storage = new InMemoryStorage();
+  let builder = Test.createTestingModule({ imports: [AppModule] })
+    .overrideProvider(StorageService)
+    .useValue(storage);
   if (opts.authThrottleLimit !== undefined) {
     builder = builder.overrideProvider(getOptionsToken()).useValue({
       throttlers: [{ name: AUTH_THROTTLER, ttl: 60_000, limit: opts.authThrottleLimit }],
@@ -35,11 +59,13 @@ export async function createApp(opts: CreateAppOptions = {}): Promise<TestContex
   configureApp(app);
   await app.init();
   const prisma = app.get(PrismaService);
-  return { app, prisma, http: () => request(app.getHttpServer()) };
+  return { app, prisma, storage, http: () => request(app.getHttpServer()) };
 }
 
-/** Removes all non-admin users (cascades sessions/addresses) and every admin session. */
+/** Removes all non-admin users (cascades sessions/addresses), all shops and every admin session. */
 export async function resetUsers(prisma: PrismaClient): Promise<void> {
+  await prisma.vendorPayoutAccount.deleteMany({});
+  await prisma.vendor.deleteMany({});
   await prisma.session.deleteMany({});
   await prisma.address.deleteMany({});
   await prisma.user.deleteMany({ where: { role: { not: 'ADMIN' } } });
@@ -99,3 +125,68 @@ export async function loginAdmin(ctx: TestContext): Promise<{ id: string; access
 }
 
 export const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
+
+export interface VendorBody {
+  shopName: string;
+  description?: string;
+  regionId: number;
+  districtId: number;
+  businessPhone: string;
+  species: string[];
+}
+
+/** A valid application using a seeded region and one of its districts. */
+export async function validVendorBody(
+  prisma: PrismaClient,
+  overrides: Partial<VendorBody> = {},
+): Promise<VendorBody> {
+  const district = await prisma.district.findFirstOrThrow({ orderBy: { id: 'asc' } });
+  return {
+    shopName: `Shop ${Date.now()} ${Math.floor(Math.random() * 1e6)}`,
+    description: 'Healthy animals',
+    regionId: district.regionId,
+    districtId: district.id,
+    businessPhone: uniquePhone(),
+    species: ['CATTLE'],
+    ...overrides,
+  };
+}
+
+/** Applies for a shop as `token`'s user and returns the response body (asserts 201). */
+export async function applyVendor(
+  ctx: TestContext,
+  token: string,
+  overrides: Partial<VendorBody> = {},
+): Promise<{ id: string; slug: string; status: string }> {
+  const res = await ctx
+    .http()
+    .post(`${API}/vendors/me`)
+    .set(bearer(token))
+    .send(await validVendorBody(ctx.prisma, overrides))
+    .expect(201);
+  return res.body as { id: string; slug: string; status: string };
+}
+
+export async function approveVendor(
+  ctx: TestContext,
+  adminToken: string,
+  vendorId: string,
+): Promise<void> {
+  await ctx
+    .http()
+    .post(`${API}/admin/vendors/${vendorId}/approve`)
+    .set(bearer(adminToken))
+    .expect(200);
+}
+
+/** Registers a customer, applies, and (optionally) gets the shop approved. */
+export async function createVendor(
+  ctx: TestContext,
+  adminToken: string,
+  opts: { approve?: boolean; overrides?: Partial<VendorBody> } = {},
+): Promise<{ user: RegisteredUser; vendor: { id: string; slug: string; status: string } }> {
+  const user = await registerUser(ctx);
+  const vendor = await applyVendor(ctx, user.accessToken, opts.overrides);
+  if (opts.approve) await approveVendor(ctx, adminToken, vendor.id);
+  return { user, vendor };
+}

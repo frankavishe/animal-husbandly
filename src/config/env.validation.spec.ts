@@ -3,6 +3,12 @@ import { envValidationOptions, envValidationSchema } from './env.validation';
 const valid = {
   DATABASE_URL: 'postgresql://u:p@localhost:5432/db',
   JWT_ACCESS_SECRET: 'x'.repeat(32),
+  S3_ENDPOINT: 'http://localhost:9100',
+  S3_REGION: 'us-east-1',
+  S3_BUCKET: 'vendor-logos',
+  S3_ACCESS_KEY_ID: 'key',
+  S3_SECRET_ACCESS_KEY: 'secret',
+  S3_PUBLIC_BASE_URL: 'http://localhost:9100/vendor-logos',
 };
 
 describe('envValidationSchema', () => {
@@ -24,6 +30,15 @@ describe('envValidationSchema', () => {
     const { error } = envValidationSchema.validate({}, envValidationOptions);
     expect(error?.message).toContain('DATABASE_URL');
     expect(error?.message).toContain('JWT_ACCESS_SECRET');
+  });
+
+  it('rejects a missing S3_BUCKET and defaults S3_FORCE_PATH_STYLE to true', () => {
+    const withoutBucket: Partial<typeof valid> = { ...valid };
+    delete withoutBucket.S3_BUCKET;
+    const { error } = envValidationSchema.validate(withoutBucket, envValidationOptions);
+    expect(error?.message).toContain('S3_BUCKET');
+    const { value } = envValidationSchema.validate(valid, envValidationOptions);
+    expect(value).toMatchObject({ S3_FORCE_PATH_STYLE: true });
   });
 
   it('rejects a too-short secret', () => {

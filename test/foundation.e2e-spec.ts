@@ -66,8 +66,27 @@ describe('Foundation (US4)', () => {
         `${API}/admin/users`,
         `${API}/admin/users/{id}`,
         `${API}/admin/users/{id}/status`,
+        // Phase 2 — vendors (SC-007)
+        `${API}/vendors/me`,
+        `${API}/vendors/me/resubmit`,
+        `${API}/vendors/me/logo`,
+        `${API}/vendors/me/payout-account`,
+        `${API}/vendors`,
+        `${API}/vendors/{slug}`,
+        `${API}/admin/vendors`,
+        `${API}/admin/vendors/{id}`,
+        `${API}/admin/vendors/{id}/approve`,
+        `${API}/admin/vendors/{id}/reject`,
+        `${API}/admin/vendors/{id}/suspend`,
+        `${API}/admin/vendors/{id}/reactivate`,
       ]),
     );
+    const vendorsMe = res.body.paths[`${API}/vendors/me`] as Record<string, unknown>;
+    expect(Object.keys(vendorsMe).sort()).toEqual(['get', 'patch', 'post']);
+    const logo = res.body.paths[`${API}/vendors/me/logo`] as {
+      put: { requestBody: { content: Record<string, unknown> } };
+    };
+    expect(Object.keys(logo.put.requestBody.content)).toEqual(['multipart/form-data']);
     await ctx.http().get('/docs').expect(200);
   });
 });
