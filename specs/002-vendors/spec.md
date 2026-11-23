@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-23
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Phase 2 — Vendors for the Animal Husbandry Marketplace backend (Tanzania, TZS). Scope: (US1, P1) a signed-in CUSTOMER applies to open a shop: shop name (unique slug generated), description, region + district (seeded TZ data), business phone (+255), species dealt in (at least one of CATTLE, GOAT, SHEEP, PIG, CHICKEN, FISH); application starts PENDING; owner can view/edit own shop while PENDING, REJECTED or APPROVED; editing a REJECTED shop then resubmitting returns it to PENDING; SUSPENDED shops cannot be edited; one shop per user. (US2, P1) ADMIN lists/filters/searches vendor applications by status, views detail including payout account, approves (PENDING→APPROVED, user role becomes VENDOR atomically, effective on next request), rejects with mandatory reason, suspends (APPROVED→SUSPENDED) and reactivates; invalid transitions are refused with a clear conflict message. (US3, P2) anyone (no sign-in) lists approved shops of active owners, paginated, filterable by region, district, species and name search, and views one shop by slug; hidden shops are not found; public view never exposes payout details, rejection reasons or reviewer info. (US4, P2) owner uploads/replaces/removes a shop logo (JPEG/PNG/WebP, max 2 MB, content verified, stored in S3-compatible object storage — MinIO locally) and sets a payout account: either MOBILE_MONEY (provider MPESA, MIXX_BY_YAS, AIRTEL_MONEY or HALOPESA, +255 number, account name) or BANK (bank name, account number, account name); payout details visible only to owner and admins; no money moves in this phase. Out of scope: listings, cart, orders, payout execution, commission, KYC document uploads, notifications."
 

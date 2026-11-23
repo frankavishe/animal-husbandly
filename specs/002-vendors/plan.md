@@ -99,7 +99,7 @@ src/
 │   └── admin.module.ts             # imports VendorsModule
 └── app.module.ts                   # + StorageModule, VendorsModule
 test/
-├── utils.ts                        # + InMemoryStorage override, createVendor helper
+├── utils.ts                        # + InMemoryStorage override, validVendorBody/applyVendor/approveVendor/createVendor helpers
 ├── vendors.e2e-spec.ts             # owner + public
 └── admin-vendors.e2e-spec.ts
 ```

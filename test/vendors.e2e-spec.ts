@@ -151,6 +151,7 @@ describe('Vendors', () => {
   describe('public browsing (US3)', () => {
     let tag: string;
     let visible: { slug: string };
+    let inactiveOwner: { userId: string; slug: string };
     const hidden: string[] = [];
 
     beforeAll(async () => {
@@ -213,6 +214,7 @@ describe('Vendors', () => {
         .send({ isActive: false })
         .expect(200);
       hidden.push(inactive.vendor.slug);
+      inactiveOwner = { userId: inactive.user.id, slug: inactive.vendor.slug };
     });
 
     it('lists only approved shops of active owners, anonymously', async () => {
@@ -280,6 +282,19 @@ describe('Vendors', () => {
     it('validates query parameters', async () => {
       await ctx.http().get(`${API}/vendors`).query({ limit: 101 }).expect(400);
       await ctx.http().get(`${API}/vendors`).query({ species: 'MILK' }).expect(400);
+    });
+
+    // Runs last: it makes a previously hidden shop visible again.
+    it('shows a shop again once its owner is reactivated', async () => {
+      await ctx
+        .http()
+        .patch(`${API}/admin/users/${inactiveOwner.userId}/status`)
+        .set(bearer(admin.accessToken))
+        .send({ isActive: true })
+        .expect(200);
+      await ctx.http().get(`${API}/vendors/${inactiveOwner.slug}`).expect(200);
+      const res = await ctx.http().get(`${API}/vendors`).query({ search: tag }).expect(200);
+      expect(res.body.total).toBe(3);
     });
   });
 
