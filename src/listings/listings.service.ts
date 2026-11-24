@@ -176,11 +176,12 @@ export class ListingsService {
     });
   }
 
-  /** Keeps the original `publishedAt` (R9). */
+  /** Keeps the original `publishedAt`; a restored, never-published listing gets one now (R9). */
   activate(userId: string, id: string): Promise<OwnerListingDto> {
     return this.transition(userId, id, 'activate', [ListingStatus.INACTIVE], {
       requireApproved: true,
       data: { status: ListingStatus.ACTIVE },
+      stampPublishedAt: true,
     });
   }
 
@@ -189,12 +190,7 @@ export class ListingsService {
       userId,
       id,
       'archive',
-      [
-        ListingStatus.DRAFT,
-        ListingStatus.ACTIVE,
-        ListingStatus.INACTIVE,
-        ListingStatus.TAKEN_DOWN,
-      ],
+      [ListingStatus.DRAFT, ListingStatus.ACTIVE, ListingStatus.INACTIVE, ListingStatus.TAKEN_DOWN],
       { requireApproved: false, data: { status: ListingStatus.ARCHIVED, archivedAt: new Date() } },
     );
   }
@@ -205,14 +201,30 @@ export class ListingsService {
     id: string,
     action: string,
     from: ListingStatus[],
-    opts: { requireApproved: boolean; data: Prisma.ListingUpdateManyMutationInput },
+    opts: {
+      requireApproved: boolean;
+      data: Prisma.ListingUpdateManyMutationInput;
+      stampPublishedAt?: boolean;
+    },
   ): Promise<OwnerListingDto> {
     const vendor = await this.vendors.findMine(userId);
     if (opts.requireApproved) assertShopApproved(vendor);
-    const { count } = await this.prisma.listing.updateMany({
-      where: { id, vendorId: vendor.id, status: { in: from } },
-      data: opts.data,
-    });
+    const own = { id, vendorId: vendor.id };
+    const operations = [
+      this.prisma.listing.updateMany({
+        where: { ...own, status: { in: from } },
+        data: opts.data,
+      }),
+    ];
+    if (opts.stampPublishedAt) {
+      operations.push(
+        this.prisma.listing.updateMany({
+          where: { ...own, status: ListingStatus.ACTIVE, publishedAt: null },
+          data: { publishedAt: new Date() },
+        }),
+      );
+    }
+    const [{ count }] = await this.prisma.$transaction(operations);
     const listing = await this.findOwn(vendor.id, id);
     if (count === 0) throw cannot(action, listing.status);
     return this.toOwner(listing);

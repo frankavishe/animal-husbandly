@@ -83,5 +83,6 @@ technical choices the spec leaves to planning.
 
 - **Decision**: `publishedAt` set on the first DRAFT → ACTIVE and kept afterwards; `archivedAt` set on
   archive. Take-down sets `takenDownReason`, `takenDownById`, `takenDownAt`; restore → INACTIVE clears only
-  the reason, keeping who/when of the last take-down for admins.
+  the reason, keeping who/when of the last take-down for admins. A DRAFT that was taken down and restored
+  has no `publishedAt`, so its first activate sets it (NULLs would otherwise sort first in "newest").
 - **Rationale**: "Newest" sort reflects when a product first went on sale; admins retain moderation history.

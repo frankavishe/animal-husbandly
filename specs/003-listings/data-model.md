@@ -29,7 +29,7 @@ Existing entities used: `Vendor` (status, species, region/district, slug), `User
 | ageMonths | int? | LIVE_ANIMAL only, 0–600 |
 | weightKg | decimal(5,1)? | LIVE_ANIMAL only, optional, 0.1–2000 |
 | status | `ListingStatus` | default DRAFT |
-| publishedAt | timestamptz? | first DRAFT → ACTIVE |
+| publishedAt | timestamptz? | first time ACTIVE |
 | archivedAt | timestamptz? | |
 | takenDownReason | text? | ≤ 500; cleared on restore |
 | takenDownById | uuid? → users.id | onDelete SetNull |
@@ -66,7 +66,7 @@ Index: `(listing_id, position)`. Max 5 per listing enforced in a transaction tha
 | create | vendor (shop APPROVED) | – | DRAFT | |
 | publish | vendor (shop APPROVED) | DRAFT | ACTIVE | sets `publishedAt` |
 | pause | vendor | ACTIVE | INACTIVE | |
-| activate | vendor (shop APPROVED) | INACTIVE | ACTIVE | |
+| activate | vendor (shop APPROVED) | INACTIVE | ACTIVE | sets `publishedAt` only if null (restored before ever being published) |
 | archive | vendor | DRAFT, ACTIVE, INACTIVE, TAKEN_DOWN | ARCHIVED | sets `archivedAt`; irreversible; photos kept |
 | take-down | admin | DRAFT, ACTIVE, INACTIVE | TAKEN_DOWN | reason required; sets by/at |
 | restore | admin | TAKEN_DOWN | INACTIVE | clears reason |

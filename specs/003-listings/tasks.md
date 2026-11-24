@@ -124,18 +124,18 @@ No new dependencies or env keys.
 **Goal**: Admins list and inspect all listings, take one down with a reason, and restore it.
 **Independent test**: Take down an ACTIVE listing, it disappears publicly, vendor sees the reason and cannot publish; restore → INACTIVE → vendor activates.
 
-- [ ] T027 [P] [US5] Admin DTOs in `src/listings/dto/admin-listing.dto.ts`: `AdminListListingsQueryDto` (pagination; `status?` IsEnum(ListingStatus); `vendorId?` IsUUID; `species?`; `listingType?`) and `TakeDownListingDto` (`reason` "1–500 chars", trimmed, required)
-- [ ] T028 [US5] `ListingsAdminService` in `src/listings/listings-admin.service.ts`: `list(q)` all statuses, order `createdAt desc, id asc`, paginated `toAdminListing`; `get(id)` 404 `Listing not found`; private `transition` (conditional `updateMany`, 404/409 `Cannot <action> a listing that is <STATUS>`); `takeDown(adminId, id, reason)` DRAFT/ACTIVE/INACTIVE → TAKEN_DOWN setting `takenDownReason`, `takenDownById`, `takenDownAt`; `restore(adminId, id)` TAKEN_DOWN → INACTIVE clearing `takenDownReason` only; export it from `ListingsModule`
-- [ ] T029 [US5] `AdminListingsController` (`@Roles(Role.ADMIN)`, `@ApiTags('admin')`, `@ApiBearerAuth`) in `src/admin/admin-listings.controller.ts`: `GET /admin/listings`, `GET /admin/listings/:id`, `POST /admin/listings/:id/take-down`, `POST /admin/listings/:id/restore` (HttpCode 200, `AdminListingDto`); import `ListingsModule` in `src/admin/admin.module.ts`
-- [ ] T030 [P] [US5] Unit tests in `src/listings/listings-admin.service.spec.ts`: take-down from each allowed status records reason/by/at; take-down of ARCHIVED/TAKEN_DOWN → 409; restore → INACTIVE clears reason and keeps by/at; restore of ACTIVE → 409; unknown id → 404; list filter composition
-- [ ] T031 [US5] E2E in `test/admin-listings.e2e-spec.ts`: spec US5 scenarios 1–6 (customer and vendor → 403; filters status/vendorId/species/listingType include ARCHIVED; take-down without reason → 400; public `GET /listings/:id` → 404 after take-down; vendor `GET` shows `takenDownReason`; vendor publish/activate → 409; vendor can still edit and archive; restore → vendor `activate` → ACTIVE)
+- [X] T027 [P] [US5] Admin DTOs in `src/listings/dto/admin-listing.dto.ts`: `AdminListListingsQueryDto` (pagination; `status?` IsEnum(ListingStatus); `vendorId?` IsUUID; `species?`; `listingType?`) and `TakeDownListingDto` (`reason` "1–500 chars", trimmed, required)
+- [X] T028 [US5] `ListingsAdminService` in `src/listings/listings-admin.service.ts`: `list(q)` all statuses, order `createdAt desc, id asc`, paginated `toAdminListing`; `get(id)` 404 `Listing not found`; private `transition` (conditional `updateMany`, 404/409 `Cannot <action> a listing that is <STATUS>`); `takeDown(adminId, id, reason)` DRAFT/ACTIVE/INACTIVE → TAKEN_DOWN setting `takenDownReason`, `takenDownById`, `takenDownAt`; `restore(adminId, id)` TAKEN_DOWN → INACTIVE clearing `takenDownReason` only; export it from `ListingsModule`
+- [X] T029 [US5] `AdminListingsController` (`@Roles(Role.ADMIN)`, `@ApiTags('admin')`, `@ApiBearerAuth`) in `src/admin/admin-listings.controller.ts`: `GET /admin/listings`, `GET /admin/listings/:id`, `POST /admin/listings/:id/take-down`, `POST /admin/listings/:id/restore` (HttpCode 200, `AdminListingDto`); import `ListingsModule` in `src/admin/admin.module.ts`
+- [X] T030 [P] [US5] Unit tests in `src/listings/listings-admin.service.spec.ts`: take-down from each allowed status records reason/by/at; take-down of ARCHIVED/TAKEN_DOWN → 409; restore → INACTIVE clears reason and keeps by/at; restore of ACTIVE → 409; unknown id → 404; list filter composition
+- [X] T031 [US5] E2E in `test/admin-listings.e2e-spec.ts`: spec US5 scenarios 1–6 (customer and vendor → 403; filters status/vendorId/species/listingType include ARCHIVED; take-down without reason → 400; public `GET /listings/:id` → 404 after take-down; vendor `GET` shows `takenDownReason`; vendor publish/activate → 409; vendor can still edit and archive; restore → vendor `activate` → ACTIVE)
 
 ## Phase 8: Polish
 
-- [ ] T032 [P] Add a Listings section to `README.md` (lifecycle diagram in text, species/type/unit rules, photo limits, endpoint groups)
-- [ ] T033 [P] Extend the `/docs-json` check in `test/foundation.e2e-spec.ts` with every new path from `contracts/api.md` (SC-007)
-- [ ] T034 Manually run `quickstart.md` scenarios 1–8 against MinIO (`docker compose up -d db minio minio-init`, `npm run start:dev`)
-- [ ] T035 Quality gate: `npm run lint`, `npm run build`, `npm test` and `npm run test:e2e` all green
+- [X] T032 [P] Add a Listings section to `README.md` (lifecycle diagram in text, species/type/unit rules, photo limits, endpoint groups)
+- [X] T033 [P] Extend the `/docs-json` check in `test/foundation.e2e-spec.ts` with every new path from `contracts/api.md` (SC-007)
+- [X] T034 Manually run `quickstart.md` scenarios 1–8 against MinIO (`docker compose up -d db minio minio-init`, `npm run start:dev`)
+- [X] T035 Quality gate: `npm run lint`, `npm run build`, `npm test` and `npm run test:e2e` all green
 
 ## Dependencies
 

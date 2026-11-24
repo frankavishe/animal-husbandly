@@ -46,7 +46,7 @@ describe('Foundation (US4)', () => {
     expect(res.body).toMatchObject({ statusCode: 401, error: 'Unauthorized' });
   });
 
-  it('publishes OpenAPI docs listing every Phase 1 route', async () => {
+  it('publishes OpenAPI docs listing every route', async () => {
     const res = await ctx.http().get('/docs-json').expect(200);
     const paths = Object.keys(res.body.paths as object);
     expect(paths).toEqual(
@@ -79,6 +79,22 @@ describe('Foundation (US4)', () => {
         `${API}/admin/vendors/{id}/reject`,
         `${API}/admin/vendors/{id}/suspend`,
         `${API}/admin/vendors/{id}/reactivate`,
+        // Phase 3 — listings (SC-007)
+        `${API}/vendors/me/listings`,
+        `${API}/vendors/me/listings/{id}`,
+        `${API}/vendors/me/listings/{id}/publish`,
+        `${API}/vendors/me/listings/{id}/pause`,
+        `${API}/vendors/me/listings/{id}/activate`,
+        `${API}/vendors/me/listings/{id}/archive`,
+        `${API}/vendors/me/listings/{id}/photos`,
+        `${API}/vendors/me/listings/{id}/photos/{photoId}`,
+        `${API}/vendors/me/listings/{id}/photos/order`,
+        `${API}/listings`,
+        `${API}/listings/{id}`,
+        `${API}/admin/listings`,
+        `${API}/admin/listings/{id}`,
+        `${API}/admin/listings/{id}/take-down`,
+        `${API}/admin/listings/{id}/restore`,
       ]),
     );
     const vendorsMe = res.body.paths[`${API}/vendors/me`] as Record<string, unknown>;
@@ -87,6 +103,10 @@ describe('Foundation (US4)', () => {
       put: { requestBody: { content: Record<string, unknown> } };
     };
     expect(Object.keys(logo.put.requestBody.content)).toEqual(['multipart/form-data']);
+    const photos = res.body.paths[`${API}/vendors/me/listings/{id}/photos`] as {
+      post: { requestBody: { content: Record<string, unknown> } };
+    };
+    expect(Object.keys(photos.post.requestBody.content)).toEqual(['multipart/form-data']);
     await ctx.http().get('/docs').expect(200);
   });
 });

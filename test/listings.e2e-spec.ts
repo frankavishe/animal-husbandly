@@ -426,8 +426,14 @@ describe('Listings', () => {
       regionA = { id: dA.regionId, districtId: dA.id };
       regionB = { id: dB.regionId, districtId: dB.id };
 
-      shopA = await approvedVendor(['CATTLE'], { regionId: regionA.id, districtId: regionA.districtId });
-      shopB = await approvedVendor(['CHICKEN'], { regionId: regionB.id, districtId: regionB.districtId });
+      shopA = await approvedVendor(['CATTLE'], {
+        regionId: regionA.id,
+        districtId: regionA.districtId,
+      });
+      shopB = await approvedVendor(['CHICKEN'], {
+        regionId: regionB.id,
+        districtId: regionB.districtId,
+      });
 
       // Visible
       ids.boran = (await createListing(ctx, shopA.token, { unitPrice: 500000 })).id;
@@ -481,7 +487,10 @@ describe('Listings', () => {
       const deactivated = await approvedVendor(['CATTLE']);
       ids.inactiveOwner = (await createListing(ctx, deactivated.token)).id;
       await publishListing(ctx, deactivated.token, ids.inactiveOwner);
-      await ctx.prisma.user.update({ where: { id: deactivated.userId }, data: { isActive: false } });
+      await ctx.prisma.user.update({
+        where: { id: deactivated.userId },
+        data: { isActive: false },
+      });
     });
 
     it('returns only visible listings, newest first (scenario 1)', async () => {
@@ -493,7 +502,9 @@ describe('Listings', () => {
 
     it('filters by species, type, region, district and shop (scenario 2)', async () => {
       expect(idsOf(await browse('?species=CHICKEN'))).toEqual([ids.eggs]);
-      expect(idsOf(await browse('?listingType=LIVE_ANIMAL'))).toEqual([ids.boran, ids.cheap].sort());
+      expect(idsOf(await browse('?listingType=LIVE_ANIMAL'))).toEqual(
+        [ids.boran, ids.cheap].sort(),
+      );
       expect(idsOf(await browse(`?regionId=${regionB.id}`))).toEqual([ids.eggs]);
       expect(idsOf(await browse(`?districtId=${regionA.districtId}`))).toEqual(
         [ids.boran, ids.cheap].sort(),
@@ -533,14 +544,28 @@ describe('Listings', () => {
         region: { id: regionA.id, name: expect.any(String) },
         district: { id: regionA.districtId, name: expect.any(String) },
       });
-      for (const key of ['status', 'takenDownReason', 'takenDownAt', 'vendor', 'vendorId', 'payoutAccount']) {
+      for (const key of [
+        'status',
+        'takenDownReason',
+        'takenDownAt',
+        'vendor',
+        'vendorId',
+        'payoutAccount',
+      ]) {
         expect(res.body).not.toHaveProperty(key);
       }
       expect(JSON.stringify(res.body)).not.toMatch(/businessPhone|payout|takenDown/);
     });
 
     it('hidden listings are 404 (scenario 7)', async () => {
-      for (const key of ['draft', 'inactive', 'archived', 'takenDown', 'suspendedShop', 'inactiveOwner']) {
+      for (const key of [
+        'draft',
+        'inactive',
+        'archived',
+        'takenDown',
+        'suspendedShop',
+        'inactiveOwner',
+      ]) {
         await ctx.http().get(`${API}/listings/${ids[key]}`).expect(404);
       }
       await ctx.http().get(`${API}/listings/not-a-uuid`).expect(400);

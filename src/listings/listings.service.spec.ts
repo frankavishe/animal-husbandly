@@ -194,12 +194,20 @@ describe('ListingsService', () => {
 
     it('allows sending the unchanged species on an ACTIVE listing', async () => {
       current = row({ status: ListingStatus.ACTIVE });
-      await expect(service.updateMine(U, L, { species: 'CATTLE', title: 'X y z' })).resolves
-        .toBeDefined();
+      await expect(
+        service.updateMine(U, L, { species: 'CATTLE', title: 'X y z' }),
+      ).resolves.toBeDefined();
     });
 
     it('re-validates a species change on a DRAFT', async () => {
-      current = row({ listingType: 'MILK', unit: 'LITRE', breed: null, sex: null, ageMonths: null, weightKg: null });
+      current = row({
+        listingType: 'MILK',
+        unit: 'LITRE',
+        breed: null,
+        sex: null,
+        ageMonths: null,
+        weightKg: null,
+      });
       await expect(service.updateMine(U, L, { species: 'CHICKEN' })).rejects.toThrow(
         new BadRequestException('MILK listings are only allowed for CATTLE'),
       );
@@ -257,7 +265,12 @@ describe('ListingsService', () => {
       ['activate', [ListingStatus.INACTIVE], ListingStatus.ACTIVE],
       [
         'archive',
-        [ListingStatus.DRAFT, ListingStatus.ACTIVE, ListingStatus.INACTIVE, ListingStatus.TAKEN_DOWN],
+        [
+          ListingStatus.DRAFT,
+          ListingStatus.ACTIVE,
+          ListingStatus.INACTIVE,
+          ListingStatus.TAKEN_DOWN,
+        ],
         ListingStatus.ARCHIVED,
       ],
     ] as const)('%s moves %j → %s with a conditional update', async (action, from, to) => {
@@ -267,11 +280,16 @@ describe('ListingsService', () => {
       expect(call.data.status).toBe(to);
     });
 
-    it('publish sets publishedAt; activate does not overwrite it', async () => {
+    it('publish sets publishedAt; activate only fills it in when missing', async () => {
       await service.publish(U, L);
       expect(prisma.listing.updateMany.mock.calls[0][0].data.publishedAt).toBeInstanceOf(Date);
       await service.activate(U, L);
       expect(prisma.listing.updateMany.mock.calls[1][0].data).not.toHaveProperty('publishedAt');
+      expect(prisma.listing.updateMany).toHaveBeenCalledTimes(3);
+      expect(prisma.listing.updateMany.mock.calls[2][0]).toEqual({
+        where: { id: L, vendorId: V, status: ListingStatus.ACTIVE, publishedAt: null },
+        data: { publishedAt: expect.any(Date) },
+      });
     });
 
     it('archive sets archivedAt', async () => {
@@ -297,9 +315,9 @@ describe('ListingsService', () => {
     it.each(invalid)('%s on %s → 409 naming the status', async (action, status) => {
       prisma.listing.updateMany.mockResolvedValue({ count: 0 });
       current = row({ status });
-      await expect(
-        (service as any)[action](U, L) as Promise<unknown>,
-      ).rejects.toThrow(new ConflictException(`Cannot ${action} a listing that is ${status}`));
+      await expect((service as any)[action](U, L) as Promise<unknown>).rejects.toThrow(
+        new ConflictException(`Cannot ${action} a listing that is ${status}`),
+      );
     });
 
     it('unknown listing → 404', async () => {

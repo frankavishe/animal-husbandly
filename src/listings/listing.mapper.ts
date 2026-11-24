@@ -26,7 +26,10 @@ export const listingInclude = {
 export type ListingWithRelations = Prisma.ListingGetPayload<{ include: typeof listingInclude }>;
 
 /** Explicit whitelist (FR-019): new columns never leak publicly by accident. */
-export function toPublicListing(l: ListingWithRelations, storage: StorageService): PublicListingDto {
+export function toPublicListing(
+  l: ListingWithRelations,
+  storage: StorageService,
+): PublicListingDto {
   const photos: PhotoDto[] = l.photos.map((p) => ({
     id: p.id,
     url: storage.publicUrl(p.key),
