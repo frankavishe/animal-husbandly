@@ -7,6 +7,7 @@ function makePrisma() {
   const session = {
     create: jest.fn(({ data }) => Promise.resolve({ ...data, createdAt: new Date() })),
     findUnique: jest.fn(),
+    findFirst: jest.fn(),
     update: jest.fn(),
     updateMany: jest.fn(),
   };
@@ -126,6 +127,16 @@ describe('SessionsService', () => {
     prisma.session.findUnique.mockResolvedValue(null);
     await expect(service.revoke(`${USER}.whateverwhateverwhatever`)).resolves.toBeUndefined();
     expect(prisma.session.update).not.toHaveBeenCalled();
+  });
+
+  it('isLive looks for an unrevoked session of that user', async () => {
+    prisma.session.findFirst.mockResolvedValueOnce({ id: 's' }).mockResolvedValueOnce(null);
+    await expect(service.isLive('s', USER)).resolves.toBe(true);
+    await expect(service.isLive('s', USER)).resolves.toBe(false);
+    expect(prisma.session.findFirst).toHaveBeenCalledWith({
+      where: { id: 's', userId: USER, revokedAt: null },
+      select: { id: true },
+    });
   });
 
   it('revokeAll can keep the current session', async () => {

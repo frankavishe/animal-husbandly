@@ -47,6 +47,29 @@ export function IsStrongPassword(): PropertyDecorator {
   );
 }
 
+const REASON_MAX = 500;
+
+/** A trimmed, required moderation reason of 1–500 characters; reports exactly one problem. */
+export function IsReason(): PropertyDecorator {
+  return applyDecorators(
+    Trim(),
+    ValidateBy({
+      name: 'isReason',
+      validator: {
+        validate: (value: unknown) =>
+          typeof value === 'string' && value.length > 0 && value.length <= REASON_MAX,
+        defaultMessage: (args) => {
+          const name = args?.property ?? 'reason';
+          const value: unknown = args?.value;
+          if (value === undefined || value === null || value === '') return `${name} is required`;
+          if (typeof value !== 'string') return `${name} must be a string`;
+          return `${name} must be at most ${REASON_MAX} characters`;
+        },
+      },
+    }),
+  );
+}
+
 /** A trimmed person name of 2–100 characters. */
 export function IsPersonName(): PropertyDecorator {
   return applyDecorators(Trim(), IsString(), MinLength(2), MaxLength(100));

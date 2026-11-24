@@ -147,6 +147,8 @@ describe('Auth (US1)', () => {
         .expect(200);
       expect(res.body.refreshToken).not.toBe(u.refreshToken);
       await ctx.http().get(`${API}/auth/me`).set(bearer(res.body.accessToken)).expect(200);
+      // the previous access token still works, so in-flight requests survive a refresh
+      await ctx.http().get(`${API}/auth/me`).set(bearer(u.accessToken)).expect(200);
       await ctx
         .http()
         .post(`${API}/auth/refresh`)
@@ -176,6 +178,10 @@ describe('Auth (US1)', () => {
         .expect(401);
       const live = await ctx.prisma.session.count({ where: { userId: u.id, revokedAt: null } });
       expect(live).toBe(0);
+      // access tokens already issued stop working as well
+      for (const token of [u.accessToken, rotated.body.accessToken]) {
+        await ctx.http().get(`${API}/auth/me`).set(bearer(token)).expect(401);
+      }
     });
 
     it('rejects malformed, forged and expired tokens', async () => {
@@ -197,13 +203,14 @@ describe('Auth (US1)', () => {
   });
 
   describe('logout', () => {
-    it('revokes the refresh token and is idempotent', async () => {
+    it('revokes the refresh and access tokens and is idempotent', async () => {
       const u = await registerUser(ctx);
       await ctx
         .http()
         .post(`${API}/auth/logout`)
         .send({ refreshToken: u.refreshToken })
         .expect(204);
+      await ctx.http().get(`${API}/auth/me`).set(bearer(u.accessToken)).expect(401);
       await ctx
         .http()
         .post(`${API}/auth/logout`)
@@ -239,6 +246,9 @@ describe('Auth (US1)', () => {
         .set(bearer(u.accessToken))
         .send({ currentPassword: PASSWORD, newPassword: 'NewPass456' })
         .expect(204);
+
+      await ctx.http().get(`${API}/auth/me`).set(bearer(u.accessToken)).expect(200);
+      await ctx.http().get(`${API}/auth/me`).set(bearer(other.body.accessToken)).expect(401);
 
       // the current session survives and still refreshes; the other session is revoked
       // (checked second: presenting a revoked token triggers replay protection → revoke all)
