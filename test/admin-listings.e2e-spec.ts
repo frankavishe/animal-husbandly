@@ -128,9 +128,17 @@ describe('Admin listing moderation (US5)', () => {
 
   it('take-down needs a reason of 1–500 characters (scenario 3)', async () => {
     const { id } = await createListing(ctx, token);
-    await takeDown(id, {}).expect(400);
-    await takeDown(id, { reason: '   ' }).expect(400);
-    await takeDown(id, { reason: 'x'.repeat(501) }).expect(400);
+    const cases: [object, string][] = [
+      [{}, 'reason is required'],
+      [{ reason: null }, 'reason is required'],
+      [{ reason: '   ' }, 'reason is required'],
+      [{ reason: 5 }, 'reason must be a string'],
+      [{ reason: 'x'.repeat(501) }, 'reason must be at most 500 characters'],
+    ];
+    for (const [body, message] of cases) {
+      const res = await takeDown(id, body).expect(400);
+      expect(res.body.message).toEqual([message]);
+    }
     await takeDown(id, { reason: REASON, status: 'ACTIVE' }).expect(400);
     expect((await get(id).expect(200)).body.status).toBe('DRAFT');
   });

@@ -127,6 +127,8 @@ describe('Admin user management (US3)', () => {
       .set(bearer(admin.accessToken))
       .send({ isActive: true })
       .expect(200);
+    // the old session stays revoked; a new sign-in is required
+    await ctx.http().get(`${API}/users/me`).set(bearer(c.accessToken)).expect(401);
     await ctx
       .http()
       .post(`${API}/auth/login`)

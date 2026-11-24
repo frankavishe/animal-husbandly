@@ -1,8 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ListingStatus, ListingType, Species } from '@prisma/client';
-import { IsEnum, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
-import { Trim } from '../../common/validators';
+import { IsReason } from '../../common/validators';
 
 export class AdminListListingsQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ enum: ListingStatus, description: 'Omit for every status' })
@@ -28,9 +28,6 @@ export class AdminListListingsQueryDto extends PaginationQueryDto {
 
 export class TakeDownListingDto {
   @ApiProperty({ minLength: 1, maxLength: 500, example: 'Photos do not match the animal offered.' })
-  @Trim()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(500)
+  @IsReason()
   reason: string;
 }

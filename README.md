@@ -3,9 +3,15 @@
 Multi-vendor livestock & animal-products marketplace for Tanzania (TZS).
 NestJS + Prisma + PostgreSQL, REST API under `/api/v1`, OpenAPI docs at `/docs`.
 
-**Phase 1 (this release):** foundation, authentication (phone/email + password, JWT access tokens,
-rotating refresh tokens), roles (CUSTOMER / VENDOR / ADMIN), user profiles, delivery addresses on
-Tanzania regions/districts, and admin user management. See [`specs/001-foundation-auth`](specs/001-foundation-auth).
+Implemented so far:
+
+- **Phase 1 — foundation & auth** ([`specs/001-foundation-auth`](specs/001-foundation-auth)): authentication
+  (phone/email + password, JWT access tokens, rotating refresh tokens), roles (CUSTOMER / VENDOR / ADMIN),
+  user profiles, delivery addresses on Tanzania regions/districts, and admin user management.
+- **Phase 2 — vendors** ([`specs/002-vendors`](specs/002-vendors)): shop applications and review, public
+  shops, logos and payout accounts.
+- **Phase 3 — listings** ([`specs/003-listings`](specs/003-listings)): listings and their lifecycle, photos,
+  public browsing and admin moderation.
 
 ## Prerequisites
 
@@ -133,7 +139,9 @@ DRAFT | ACTIVE | INACTIVE | TAKEN_DOWN ──archive──► ARCHIVED (irrevers
 - Photos: up to 5 per listing, JPEG/PNG/WebP up to 5 MB each, verified by content; the first is the cover.
 
 Refresh tokens look like `<sessionId>.<secret>`, are single-use, and are stored only as SHA-256 hashes.
-Presenting a token that was already used or revoked signs the user out everywhere.
+Presenting a token that was already used or revoked signs the user out everywhere. Access tokens of a
+revoked session are refused on the next request; after a normal refresh, the previous access token stays
+valid until it expires.
 
 ## Project layout
 

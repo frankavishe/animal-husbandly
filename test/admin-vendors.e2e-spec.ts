@@ -67,8 +67,10 @@ describe('Admin vendor review (US2)', () => {
   it('reject → resubmit → approve makes the owner a VENDOR on the next request', async () => {
     const { user, vendor } = await createVendor(ctx, admin.accessToken);
 
-    await post(`${vendor.id}/reject`, {}).expect(400);
-    await post(`${vendor.id}/reject`, { reason: '   ' }).expect(400);
+    for (const body of [{}, { reason: '   ' }]) {
+      const res = await post(`${vendor.id}/reject`, body).expect(400);
+      expect(res.body.message).toEqual(['reason is required']);
+    }
     const rejected = await post(`${vendor.id}/reject`, { reason: 'Phone unreachable' }).expect(200);
     expect(rejected.body).toMatchObject({
       status: 'REJECTED',

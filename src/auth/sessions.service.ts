@@ -109,6 +109,18 @@ export class SessionsService {
     return issued;
   }
 
+  /**
+   * Whether the session an access token was issued for has not been revoked. A spent (rotated)
+   * session still counts as live, so requests in flight during a refresh are not refused.
+   */
+  async isLive(sessionId: string, userId: string): Promise<boolean> {
+    const session = await this.prisma.session.findFirst({
+      where: { id: sessionId, userId, revokedAt: null },
+      select: { id: true },
+    });
+    return session !== null;
+  }
+
   /** Revokes the session behind `token` if it is valid. Silent otherwise (logout is idempotent). */
   async revoke(token: string): Promise<void> {
     const session = await this.find(token);

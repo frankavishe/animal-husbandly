@@ -16,8 +16,11 @@
 
 ## Access token & deactivation
 - **Decision**: JWT (HS256) 15 min with `sub`, `role`, `sid`. `JwtStrategy.validate` loads the user and rejects
-  inactive users, and uses the DB role (not the token's) for authorization.
-- **Rationale**: SC-003 requires deactivation to take effect within one request; one indexed PK lookup per request is cheap.
+  inactive users, and uses the DB role (not the token's) for authorization. It also rejects (401)
+  tokens whose session (`sid`) is revoked or gone. A spent (`usedAt`) session is still accepted, so requests in
+  flight during a normal refresh are not refused.
+- **Rationale**: SC-003 requires deactivation to take effect within one request; two indexed PK lookups per
+  request are cheap. Checking the session makes logout, password change and replay detection (FR-014) immediate.
 
 ## Password hashing
 - **Decision**: `bcrypt`, cost 10 (configurable `BCRYPT_ROUNDS`, tests use 4).
