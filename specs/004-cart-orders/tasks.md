@@ -54,15 +54,15 @@ No new dependencies.
 **Goal**: One private cart per customer or vendor, grouped by shop, with flags.
 **Independent test**: Add from two shops, change, remove, check totals; price change and pause are flagged; stock never changes.
 
-- [ ] T010 [P] [US1] Create `src/cart/dto/index.ts`: `AddCartItemDto` (`listingId` UUID, `quantity` int 1–1,000,000), `SetCartItemDto` (`quantity` int 1–1,000,000), and `CartDto` with nested response classes matching the contract, all with Swagger decorators
-- [ ] T011 [P] [US1] Create `src/cart/cart.mapper.ts` and `src/cart/cart.mapper.spec.ts`: flags `UNAVAILABLE`, `SHORT_OF_STOCK`, `PRICE_CHANGED`; unavailable lines have null price, total and stock and are excluded from totals; group by shop; sums in `bigint`; `exceedsMaxTotal` compared as `bigint`. Spec includes 50 lines of 1e15 and an exact key whitelist
-- [ ] T012 [US1] Create `src/cart/cart.service.ts` (exported from `src/cart/cart.module.ts`): `get`, `add`, `set`, `remove`, `clear`:
+- [x] T010 [P] [US1] Create `src/cart/dto/index.ts`: `AddCartItemDto` (`listingId` UUID, `quantity` int 1–1,000,000), `SetCartItemDto` (`quantity` int 1–1,000,000), and `CartDto` with nested response classes matching the contract, all with Swagger decorators
+- [x] T011 [P] [US1] Create `src/cart/cart.mapper.ts` and `src/cart/cart.mapper.spec.ts`: flags `UNAVAILABLE`, `SHORT_OF_STOCK`, `PRICE_CHANGED`; unavailable lines have null price, total and stock and are excluded from totals; group by shop; sums in `bigint`; `exceedsMaxTotal` compared as `bigint`. Spec includes 50 lines of 1e15 and an exact key whitelist
+- [x] T012 [US1] Create `src/cart/cart.service.ts` (exported from `src/cart/cart.module.ts`): `get`, `add`, `set`, `remove`, `clear`:
   - Writes upsert the cart, lock it `FOR UPDATE` (bound `$queryRaw`) and run in one transaction with the same 10 s limits
   - `add`: listing not visible → 404 `Listing not found`; own shop → 403 `You cannot buy from your own shop`; stock 0 → 409 out of stock; existing + quantity above stock → 409 naming the stock, line unchanged; 51st line → 409
   - `set`: not in cart → 404; same visibility and stock checks. `add` and `set` update `lastSeenPrice`; `remove` and `clear` work on unavailable lines
-- [ ] T013 [US1] Create `src/cart/cart.controller.ts` (`@Roles(CUSTOMER, VENDOR)`): `GET /cart`, `DELETE /cart`, `POST /cart/items` (200), `PATCH /cart/items/:listingId`, `DELETE /cart/items/:listingId`, all returning `CartDto` with Swagger responses; register in `src/cart/cart.module.ts`
-- [ ] T014 [US1] Unit tests in `src/cart/cart.service.spec.ts` for every rule in T012
-- [ ] T015 [US1] E2E in `test/cart.e2e-spec.ts`: US1 scenarios 1–9; simultaneous adds of one listing give one combined line within stock; 51st line; admin 403 and anonymous 401; another user's cart unaffected; stock unchanged throughout; unavailable lines expose no moderation details
+- [x] T013 [US1] Create `src/cart/cart.controller.ts` (`@Roles(CUSTOMER, VENDOR)`): `GET /cart`, `DELETE /cart`, `POST /cart/items` (200), `PATCH /cart/items/:listingId`, `DELETE /cart/items/:listingId`, all returning `CartDto` with Swagger responses; register in `src/cart/cart.module.ts`
+- [x] T014 [US1] Unit tests in `src/cart/cart.service.spec.ts` for every rule in T012
+- [x] T015 [US1] E2E in `test/cart.e2e-spec.ts`: US1 scenarios 1–9; simultaneous adds of one listing give one combined line within stock; 51st line; admin 403 and anonymous 401; another user's cart unaffected; stock unchanged throughout; unavailable lines expose no moderation details
 
 ## Phase 4: User Story 2: Place an order (P1)
 
@@ -71,7 +71,7 @@ No new dependencies.
 
 - [ ] T016 [P] [US2] Create `src/orders/dto/checkout.dto.ts`: `CheckoutDto` (`addressId` UUID, `submissionKey` UUID, `lines` 1–50, nested-validated, distinct by `listingId`) and `CheckoutLineDto` (`listingId` UUID, `quantity` int 1–1,000,000, `unitPrice` int 1–1,000,000,000); and `src/orders/dto/order-response.dto.ts` with the shared and `CustomerOrderDto` shapes; export from `src/orders/dto/index.ts`
 - [ ] T017 [P] [US2] Create `src/orders/order.mapper.ts` and `src/orders/order.mapper.spec.ts`: `orderInclude`, `toCustomerOrder` (bigint → number; ADMIN shown as `MARKETPLACE`; no actor ids; `reason` from the last history entry). Spec asserts exact keys
-- [ ] T018 [US2] Add `lockForCheckout(tx, userId)`, `loadLines(tx, cartId)` and `empty(tx, cartId)` to `src/cart/cart.service.ts`
+- [x] T018 [US2] Add `lockForCheckout(tx, userId)`, `loadLines(tx, cartId)` and `empty(tx, cartId)` to `src/cart/cart.service.ts`
 - [ ] T019 [US2] Create `src/orders/checkout.service.ts`: `checkout(userId, dto)` in one `$transaction` with `ORDER_TX_OPTIONS`, in this order:
   - Lock cart; look up `(customerId, submissionKey)`: same SHA-256 hash of address id + lines sorted by listing id → return that order; different → 409
   - 10 OPEN orders → 409 naming the limit; empty cart → 400; `AddressesService.get` → 404 `Address not found`
