@@ -11,7 +11,7 @@ export default function globalSetup(): void {
   const root = resolve(__dirname, '..');
   const env = { ...process.env };
   config({ path: resolve(root, '.env.test'), override: true, quiet: true, processEnv: env });
-  if (!env.DATABASE_URL?.includes(':5433/')) {
+  if (!env.DATABASE_URL?.includes(':5435/')) {
     throw new Error('Refusing to prepare a non-test database: DATABASE_URL must point at db_test');
   }
   execSync('npx prisma migrate deploy', { cwd: root, env, stdio: 'pipe' });

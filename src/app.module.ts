@@ -5,12 +5,14 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
+import { CartModule } from './cart/cart.module';
 import { AUTH_THROTTLER } from './auth/auth.constants';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { HealthModule } from './common/health/health.module';
 import { AppConfig, envValidationOptions, envValidationSchema } from './config/env.validation';
 import { ListingsModule } from './listings/listings.module';
+import { OrdersModule } from './orders/orders.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { StorageModule } from './common/storage';
 import { UsersModule } from './users/users.module';
@@ -61,6 +63,8 @@ import { VendorsModule } from './vendors/vendors.module';
     AuthModule,
     VendorsModule,
     ListingsModule,
+    CartModule,
+    OrdersModule,
     AdminModule,
   ],
   providers: [

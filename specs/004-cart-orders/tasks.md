@@ -16,36 +16,36 @@ Format: `[ID] [P?] [Story] Description`. `[P]` means the task can run in paralle
 
 No new dependencies.
 
-- [ ] T001 Add `ORDER_EXPIRY_INTERVAL_MS` to `src/config/env.validation.ts` (`Joi.number().integer().min(0).max(600000).default(300000)`, and to `AppConfig`) with a case in the existing config spec in `src/config/`; document it in `.env.example` (`0` = off) and set it to `0` in `.env.test`
-- [ ] T002 [P] Export `AddressesService` from `src/users/users.module.ts` (no behaviour change)
+- [x] T001 Add `ORDER_EXPIRY_INTERVAL_MS` to `src/config/env.validation.ts` (`Joi.number().integer().min(0).max(600000).default(300000)`, and to `AppConfig`) with a case in the existing config spec in `src/config/`; document it in `.env.example` (`0` = off) and set it to `0` in `.env.test`
+- [x] T002 [P] Export `AddressesService` from `src/users/users.module.ts` (no behaviour change)
 
 ## Phase 2: Foundational (blocks all stories)
 
-- [ ] T003 Add enums `SubOrderStatus`, `PaymentMethod`, `OrderActorType` and models `Cart`, `CartItem`, `Order`, `SubOrder`, `OrderItem`, `SubOrderStatusHistory` to `prisma/schema.prisma`, with the exact fields, snake_case maps, unique keys, indexes and delete rules of `data-model.md`:
+- [x] T003 Add enums `SubOrderStatus`, `PaymentMethod`, `OrderActorType` and models `Cart`, `CartItem`, `Order`, `SubOrder`, `OrderItem`, `SubOrderStatusHistory` to `prisma/schema.prisma`, with the exact fields, snake_case maps, unique keys, indexes and delete rules of `data-model.md`:
   - `Cart`/`CartItem` foreign keys Cascade; every foreign key from the four order tables **Restrict**
   - `total`, `subtotal`, `lineTotal` are `BigInt`; `seq Int @unique @default(autoincrement())`
   - Unique: `carts(user_id)`, `cart_items(cart_id, listing_id)`, `orders(customer_id, submission_key)`, `sub_orders(order_id, vendor_id)`, `order_items(sub_order_id, listing_id)`
-- [ ] T004 Create migration `prisma/migrations/<ts>_cart_orders/migration.sql` (`prisma migrate dev --create-only`), append the six CHECKs, apply to dev and test databases, regenerate the client:
+- [x] T004 Create migration `prisma/migrations/<ts>_cart_orders/migration.sql` (`prisma migrate dev --create-only`), append the six CHECKs, apply to dev and test databases, regenerate the client:
   - `cart_items_quantity`: quantity 1–1,000,000 and last_seen_price 1–1,000,000,000
   - `orders_total` and `sub_orders_subtotal`: 1–10,000,000,000
   - `sub_orders_cash_collected`: `(status = 'DELIVERED') = (cash_collected_at IS NOT NULL)`
   - `order_items_line_total`: unit_price 1–1e9, quantity 1–1e6, `line_total = unit_price::bigint * quantity`
   - `sub_order_history_actor`: `(actor_type = 'MARKETPLACE') = (actor_id IS NULL)` and reason null or ≤ 500 characters
-- [ ] T005 Create pure `src/orders/order-status.ts` and `src/orders/order-status.spec.ts`:
+- [x] T005 Create pure `src/orders/order-status.ts` and `src/orders/order-status.spec.ts`:
   - `TRANSITIONS` keyed by actor and action with `from[]`, `to` and whether a reason is `required`, `optional` or `none`, exactly the data-model table; `OPEN_STATUSES` = PENDING, CONFIRMED, DISPATCHED
   - `returnsStock(from, to)`: true only for from PENDING/CONFIRMED and to REJECTED/CANCELLED
   - `overallStatus(statuses)` and `overallStatusWhere(status): Prisma.OrderWhereInput` (R8); `orderNumber(seq)` → `ORD-` + at least 8 digits; constants `MAX_ORDER_TOTAL = 10_000_000_000n`, `MAX_OPEN_ORDERS = 10`, `RESPONSE_LIMIT_HOURS = 48`, `ORDER_TX_OPTIONS = { maxWait: 10_000, timeout: 10_000 }`
   - Spec: every status × actor × action, every overall status combination, number padding
-- [ ] T006 Create `src/listings/listing-stock.service.ts` and `src/listings/listing-stock.service.spec.ts`, exported from `src/listings/listings.module.ts`; all methods take a `Prisma.TransactionClient`:
+- [x] T006 Create `src/listings/listing-stock.service.ts` and `src/listings/listing-stock.service.spec.ts`, exported from `src/listings/listings.module.ts`; all methods take a `Prisma.TransactionClient`:
   - `lockForSale(tx, ids)`: bound `$queryRaw` `SELECT id … ORDER BY id FOR NO KEY UPDATE`, then re-read listing, stock, price, shop and an `available` flag (ACTIVE and the `PUBLIC_VENDOR_WHERE` rule)
   - `take(tx, listingId, quantity)`: `updateMany` with `stockQuantity: { gte: quantity }` and a decrement; count 0 throws 409
   - `giveBack(tx, items)`: sorted by listing id, bound `$executeRaw` `stock_quantity = LEAST(stock_quantity + q, 1000000)`, `updated_at = now()`; never touches status
-- [ ] T007 Create `src/orders/sub-order-transitions.service.ts` and `src/orders/sub-order-transitions.service.spec.ts`: `apply({ subOrderId, where, actorType, actorId, action, reason })` in one `$transaction` with `ORDER_TX_OPTIONS`:
+- [x] T007 Create `src/orders/sub-order-transitions.service.ts` and `src/orders/sub-order-transitions.service.spec.ts`: `apply({ subOrderId, where, actorType, actorId, action, reason })` in one `$transaction` with `ORDER_TX_OPTIONS`:
   - Lock the sub-order `FOR UPDATE` (scoped by `where`; none → 404 `Order not found`); status not in `from` → 409 `Cannot <action> an order that is <STATUS>`
   - Update status (DELIVERED also sets `cashCollectedAt`), append one history row, call `giveBack` when `returnsStock`
   - Spec: history and stock for each transition; DISPATCHED → CANCELLED returns nothing; 404 and 409 change nothing
-- [ ] T008 Create `src/cart/cart.module.ts` and `src/orders/orders.module.ts` (imports Cart, Listings, Users, Vendors; provides `SubOrderTransitionsService`) and register both in `src/app.module.ts`
-- [ ] T009 [P] Extend `test/utils.ts`: `resetUsers` first deletes history, order items, sub-orders, orders, cart items and carts; add helpers `createAddress`, `addToCart`, `checkout` (builds lines from `GET /cart`, random `submissionKey`), `placeOrder`, `getStock`
+- [x] T008 Create `src/cart/cart.module.ts` and `src/orders/orders.module.ts` (imports Cart, Listings, Users, Vendors; provides `SubOrderTransitionsService`) and register both in `src/app.module.ts`
+- [x] T009 [P] Extend `test/utils.ts`: `resetUsers` first deletes history, order items, sub-orders, orders, cart items and carts; add helpers `createAddress`, `addToCart`, `checkout` (builds lines from `GET /cart`, random `submissionKey`), `placeOrder`, `getStock`
 
 **Checkpoint**: migration applied, unit tests of the pure rules pass, existing e2e suites still green.
 

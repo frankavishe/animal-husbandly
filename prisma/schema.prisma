@@ -15,20 +15,23 @@ enum Role {
 
 /// A person using the marketplace. At least one of phone/email is required (DB CHECK constraint).
 model User {
-  id              String    @id @default(uuid()) @db.Uuid
-  fullName        String    @map("full_name")
-  phone           String?   @unique
-  email           String?   @unique
-  passwordHash    String    @map("password_hash")
-  role            Role      @default(CUSTOMER)
-  isActive        Boolean   @default(true) @map("is_active")
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
-  sessions        Session[]
-  addresses       Address[]
-  vendor          Vendor?   @relation("VendorOwner")
-  reviewedVendors Vendor[]  @relation("VendorReviewer")
-  takenDownListings Listing[] @relation("ListingTakenDownBy")
+  id                 String                  @id @default(uuid()) @db.Uuid
+  fullName           String                  @map("full_name")
+  phone              String?                 @unique
+  email              String?                 @unique
+  passwordHash       String                  @map("password_hash")
+  role               Role                    @default(CUSTOMER)
+  isActive           Boolean                 @default(true) @map("is_active")
+  createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
+  sessions           Session[]
+  addresses          Address[]
+  vendor             Vendor?                 @relation("VendorOwner")
+  reviewedVendors    Vendor[]                @relation("VendorReviewer")
+  takenDownListings  Listing[]               @relation("ListingTakenDownBy")
+  cart               Cart?
+  orders             Order[]
+  orderStatusChanges SubOrderStatusHistory[]
 
   @@index([role, isActive])
   @@map("users")
@@ -150,6 +153,7 @@ model Vendor {
   updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
   payoutAccount   VendorPayoutAccount?
   listings        Listing[]
+  subOrders       SubOrder[]
 
   @@index([status])
   @@index([regionId])
@@ -231,6 +235,8 @@ model Listing {
   createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
   photos          ListingPhoto[]
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
 
   @@index([status, publishedAt])
   @@index([vendorId, status])
@@ -251,4 +257,139 @@ model ListingPhoto {
 
   @@index([listingId, position])
   @@map("listing_photos")
+}
+
+// ------------------------------------------------------------------ Phase 4: cart & orders
+
+enum SubOrderStatus {
+  PENDING
+  CONFIRMED
+  DISPATCHED
+  DELIVERED
+  REJECTED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH_ON_DELIVERY
+}
+
+enum OrderActorType {
+  CUSTOMER
+  VENDOR
+  ADMIN
+  MARKETPLACE
+}
+
+/// One per user, created on first use; locked FOR UPDATE by every cart write and checkout.
+model Cart {
+  id        String     @id @default(uuid()) @db.Uuid
+  userId    String     @unique @map("user_id") @db.Uuid
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+  items     CartItem[]
+
+  @@map("carts")
+}
+
+/// Ranges enforced by CHECK `cart_items_quantity`; at most 50 per cart (under the cart lock).
+model CartItem {
+  id            String   @id @default(uuid()) @db.Uuid
+  cartId        String   @map("cart_id") @db.Uuid
+  cart          Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  listingId     String   @map("listing_id") @db.Uuid
+  listing       Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  quantity      Int
+  lastSeenPrice Int      @map("last_seen_price")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([cartId, listingId])
+  @@index([listingId])
+  @@map("cart_items")
+}
+
+/// A cash-on-delivery order; the delivery address is copied. Overall status is derived from sub-orders.
+model Order {
+  id             String        @id @default(uuid()) @db.Uuid
+  seq            Int           @unique @default(autoincrement())
+  customerId     String        @map("customer_id") @db.Uuid
+  customer       User          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  recipientName  String        @map("recipient_name")
+  contactPhone   String        @map("contact_phone")
+  regionName     String        @map("region_name")
+  districtName   String        @map("district_name")
+  wardStreet     String        @map("ward_street")
+  landmark       String?
+  paymentMethod  PaymentMethod @default(CASH_ON_DELIVERY) @map("payment_method")
+  total          BigInt
+  submissionKey  String        @map("submission_key") @db.Uuid
+  submissionHash String        @map("submission_hash")
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  subOrders      SubOrder[]
+
+  @@unique([customerId, submissionKey])
+  @@index([customerId, createdAt])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+/// One shop's part of an order. `cashCollectedAt` is set exactly when DELIVERED (CHECK).
+model SubOrder {
+  id              String                  @id @default(uuid()) @db.Uuid
+  orderId         String                  @map("order_id") @db.Uuid
+  order           Order                   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  vendorId        String                  @map("vendor_id") @db.Uuid
+  vendor          Vendor                  @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  shopName        String                  @map("shop_name")
+  subtotal        BigInt
+  status          SubOrderStatus          @default(PENDING)
+  cashCollectedAt DateTime?               @map("cash_collected_at") @db.Timestamptz(3)
+  createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
+  items           OrderItem[]
+  history         SubOrderStatusHistory[]
+
+  @@unique([orderId, vendorId])
+  @@index([vendorId, status])
+  @@index([status, createdAt])
+  @@map("sub_orders")
+}
+
+/// A copy of what was bought; `lineTotal = unitPrice × quantity` (CHECK).
+model OrderItem {
+  id          String      @id @default(uuid()) @db.Uuid
+  subOrderId  String      @map("sub_order_id") @db.Uuid
+  subOrder    SubOrder    @relation(fields: [subOrderId], references: [id], onDelete: Restrict)
+  listingId   String      @map("listing_id") @db.Uuid
+  listing     Listing     @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  title       String
+  species     Species
+  listingType ListingType @map("listing_type")
+  unit        ListingUnit
+  unitPrice   Int         @map("unit_price")
+  quantity    Int
+  lineTotal   BigInt      @map("line_total")
+
+  @@unique([subOrderId, listingId])
+  @@index([listingId])
+  @@map("order_items")
+}
+
+/// Append-only. `actorId` is null exactly for MARKETPLACE (CHECK `sub_order_history_actor`).
+model SubOrderStatusHistory {
+  id         String          @id @default(uuid()) @db.Uuid
+  subOrderId String          @map("sub_order_id") @db.Uuid
+  subOrder   SubOrder        @relation(fields: [subOrderId], references: [id], onDelete: Restrict)
+  fromStatus SubOrderStatus? @map("from_status")
+  toStatus   SubOrderStatus  @map("to_status")
+  actorType  OrderActorType  @map("actor_type")
+  actorId    String?         @map("actor_id") @db.Uuid
+  actor      User?           @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  reason     String?
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([subOrderId, createdAt])
+  @@map("sub_order_status_history")
 }

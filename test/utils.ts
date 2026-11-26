@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { getOptionsToken } from '@nestjs/throttler';
 import { PrismaClient } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { AUTH_THROTTLER } from '../src/auth/auth.constants';
@@ -62,8 +63,17 @@ export async function createApp(opts: CreateAppOptions = {}): Promise<TestContex
   return { app, prisma, storage, http: () => request(app.getHttpServer()) };
 }
 
-/** Removes all non-admin users (cascades sessions/addresses), all shops and every admin session. */
+/**
+ * Removes all orders and carts, all non-admin users (cascades sessions/addresses), all shops and
+ * every admin session. Order tables come first because their foreign keys are RESTRICT.
+ */
 export async function resetUsers(prisma: PrismaClient): Promise<void> {
+  await prisma.subOrderStatusHistory.deleteMany({});
+  await prisma.orderItem.deleteMany({});
+  await prisma.subOrder.deleteMany({});
+  await prisma.order.deleteMany({});
+  await prisma.cartItem.deleteMany({});
+  await prisma.cart.deleteMany({});
   await prisma.listingPhoto.deleteMany({});
   await prisma.listing.deleteMany({});
   await prisma.vendorPayoutAccount.deleteMany({});
@@ -256,4 +266,107 @@ export async function publishListing(ctx: TestContext, token: string, id: string
     .set(bearer(token))
     .expect(200);
   return res.body;
+}
+
+// ------------------------------------------------------------------ Phase 4: cart & orders
+
+/** Saves an address for `token`'s user in the first seeded district (asserts 201); returns its id. */
+export async function createAddress(
+  ctx: TestContext,
+  token: string,
+  overrides: Record<string, unknown> = {},
+): Promise<string> {
+  const district = await ctx.prisma.district.findFirstOrThrow({ orderBy: { id: 'asc' } });
+  const res = await ctx
+    .http()
+    .post(`${API}/users/me/addresses`)
+    .set(bearer(token))
+    .send({
+      label: 'Home',
+      recipientName: 'Asha Mushi',
+      contactPhone: uniquePhone(),
+      regionId: district.regionId,
+      districtId: district.id,
+      wardStreet: 'Sakina, Mianzini Street',
+      landmark: 'Near the market',
+      ...overrides,
+    })
+    .expect(201);
+  return res.body.id as string;
+}
+
+/** Adds `quantity` of a listing to `token`'s cart (asserts 200) and returns the cart. */
+export async function addToCart(
+  ctx: TestContext,
+  token: string,
+  listingId: string,
+  quantity = 1,
+): Promise<Json> {
+  const res = await ctx
+    .http()
+    .post(`${API}/cart/items`)
+    .set(bearer(token))
+    .send({ listingId, quantity })
+    .expect(200);
+  return res.body;
+}
+
+export interface CheckoutLine {
+  listingId: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+/** The confirmable lines of `token`'s cart, as `GET /cart` shows them. */
+export async function cartLines(ctx: TestContext, token: string): Promise<CheckoutLine[]> {
+  const res = await ctx.http().get(`${API}/cart`).set(bearer(token)).expect(200);
+  return (res.body.shops as Json[]).flatMap((shop) =>
+    (shop.lines as Json[]).map((l) => ({
+      listingId: l.listingId as string,
+      quantity: l.quantity as number,
+      unitPrice: (l.unitPrice ?? l.previousPrice ?? 1) as number,
+    })),
+  );
+}
+
+/**
+ * Sends a checkout (no status assertion). Lines default to the cart as `GET /cart` shows it and
+ * the submission key to a fresh random one.
+ */
+export async function checkout(
+  ctx: TestContext,
+  token: string,
+  addressId: string,
+  opts: { lines?: CheckoutLine[]; submissionKey?: string } = {},
+): Promise<request.Response> {
+  const lines = opts.lines ?? (await cartLines(ctx, token));
+  return ctx
+    .http()
+    .post(`${API}/orders`)
+    .set(bearer(token))
+    .send({ addressId, submissionKey: opts.submissionKey ?? randomUUID(), lines });
+}
+
+/** Adds the given listings to the cart and checks out (asserts 201); returns the order. */
+export async function placeOrder(
+  ctx: TestContext,
+  token: string,
+  addressId: string,
+  items: { listingId: string; quantity?: number }[],
+): Promise<Json> {
+  for (const item of items) await addToCart(ctx, token, item.listingId, item.quantity ?? 1);
+  const res = await checkout(ctx, token, addressId);
+  if (res.status !== 201) {
+    throw new Error(`checkout failed: ${res.status} ${JSON.stringify(res.body)}`);
+  }
+  return res.body;
+}
+
+/** The listing's current stock straight from the database. */
+export async function getStock(ctx: TestContext, listingId: string): Promise<number> {
+  const l = await ctx.prisma.listing.findUniqueOrThrow({
+    where: { id: listingId },
+    select: { stockQuantity: true },
+  });
+  return l.stockQuantity;
 }

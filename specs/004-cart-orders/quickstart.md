@@ -5,7 +5,7 @@ Shapes and status codes: [contracts/api.md](./contracts/api.md). Transitions: [d
 ## Prerequisites
 - Phase 3 environment working (see `specs/003-listings/quickstart.md`).
 - Optional new env key `ORDER_EXPIRY_INTERVAL_MS` (default 300000; `0` in `.env.test`).
-- Dev database on 5434, test database on 5433; pick a free `PORT` if 3000 is taken.
+- Dev database on 5434, test database on 5435; pick a free `PORT` if 3000 is taken.
 
 ## Setup
 ```

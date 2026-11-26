@@ -48,4 +48,23 @@ describe('envValidationSchema', () => {
     );
     expect(error?.message).toContain('JWT_ACCESS_SECRET');
   });
+
+  it('defaults ORDER_EXPIRY_INTERVAL_MS to 5 minutes, allows 0 and rejects out-of-range values', () => {
+    expect(envValidationSchema.validate(valid, envValidationOptions).value).toMatchObject({
+      ORDER_EXPIRY_INTERVAL_MS: 300000,
+    });
+    expect(
+      envValidationSchema.validate(
+        { ...valid, ORDER_EXPIRY_INTERVAL_MS: '0' },
+        envValidationOptions,
+      ).value,
+    ).toMatchObject({ ORDER_EXPIRY_INTERVAL_MS: 0 });
+    for (const bad of ['-1', '600001', '1.5', 'abc']) {
+      const { error } = envValidationSchema.validate(
+        { ...valid, ORDER_EXPIRY_INTERVAL_MS: bad },
+        envValidationOptions,
+      );
+      expect(error?.message).toContain('ORDER_EXPIRY_INTERVAL_MS');
+    }
+  });
 });

@@ -27,6 +27,7 @@ export const envValidationSchema = Joi.object({
     .uri({ scheme: ['http', 'https'] })
     .required(),
   S3_FORCE_PATH_STYLE: Joi.boolean().default(true),
+  ORDER_EXPIRY_INTERVAL_MS: Joi.number().integer().min(0).max(600000).default(300000),
 });
 
 export const envValidationOptions = { abortEarly: false, allowUnknown: true };
@@ -49,4 +50,6 @@ export interface AppConfig {
   S3_SECRET_ACCESS_KEY: string;
   S3_PUBLIC_BASE_URL: string;
   S3_FORCE_PATH_STYLE: boolean;
+  /** How often PENDING sub-orders older than 48 h are expired; 0 turns expiry off. */
+  ORDER_EXPIRY_INTERVAL_MS: number;
 }

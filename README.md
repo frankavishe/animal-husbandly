@@ -22,7 +22,7 @@ Implemented so far:
 
 ```bash
 cp .env.example .env              # then set JWT_ACCESS_SECRET and ADMIN_* values
-docker compose up -d              # db (5434), db_test (5433), minio (9100/9101) + bucket init
+docker compose up -d              # db (5434), db_test (5435), minio (9100/9101) + bucket init
 npm install
 npx prisma migrate deploy
 npm run prisma:seed               # 31 regions + districts, admin from ADMIN_* env
@@ -50,7 +50,7 @@ need MinIO.
 | `npm run build` / `npm start` | Compile to `dist/` and run |
 | `npm run lint` | ESLint (type-aware) + Prettier |
 | `npm test` | Unit tests (Jest) |
-| `npm run test:e2e` | E2E tests (supertest) against `db_test` on port 5433 |
+| `npm run test:e2e` | E2E tests (supertest) against `db_test` on port 5435 |
 | `npm run prisma:migrate` | Create/apply a migration in development |
 | `npm run prisma:seed` | Seed regions/districts and the admin user (idempotent) |
 
