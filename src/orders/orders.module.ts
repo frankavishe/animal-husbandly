@@ -5,6 +5,7 @@ import { UsersModule } from '../users/users.module';
 import { VendorsModule } from '../vendors/vendors.module';
 import { CheckoutService } from './checkout.service';
 import { OrderExpiryService } from './order-expiry.service';
+import { OrdersAdminService } from './orders-admin.service';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { SubOrderTransitionsService } from './sub-order-transitions.service';
@@ -20,6 +21,8 @@ import { VendorOrdersService } from './vendor-orders.service';
     OrdersService,
     VendorOrdersService,
     OrderExpiryService,
+    OrdersAdminService,
   ],
+  exports: [OrdersAdminService],
 })
 export class OrdersModule {}

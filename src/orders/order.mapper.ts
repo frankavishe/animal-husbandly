@@ -1,5 +1,7 @@
 import { Order, OrderActorType, Prisma } from '@prisma/client';
 import {
+  AdminOrderDto,
+  AdminSubOrderDto,
   CustomerOrderDto,
   CustomerSubOrderDto,
   OrderAddressDto,
@@ -144,5 +146,36 @@ export function toVendorOrder(s: VendorSubOrder): VendorOrderDto {
     paymentMethod: s.order.paymentMethod,
     deliveryAddress: toAddress(s.order),
     createdAt: s.order.createdAt,
+  };
+}
+
+/** Administrators see everything, including who acted (FR-026). */
+export function toAdminOrder(o: OrderWithRelations): AdminOrderDto {
+  return {
+    id: o.id,
+    orderNumber: orderNumber(o.seq),
+    status: overallStatus(o.subOrders.map((s) => s.status)),
+    paymentMethod: o.paymentMethod,
+    total: Number(o.total),
+    deliveryAddress: toAddress(o),
+    createdAt: o.createdAt,
+    customer: {
+      id: o.customer.id,
+      fullName: o.customer.fullName,
+      phone: o.customer.phone,
+      email: o.customer.email,
+    },
+    subOrders: o.subOrders.map((s): AdminSubOrderDto => ({
+      ...toSubOrder(s),
+      history: s.history.map((h) => ({
+        fromStatus: h.fromStatus,
+        toStatus: h.toStatus,
+        actor: h.actorType,
+        actorUser: h.actor ? { id: h.actor.id, fullName: h.actor.fullName } : null,
+        reason: h.reason,
+        createdAt: h.createdAt,
+      })),
+      vendor: { id: s.vendor.id, slug: s.vendor.slug, shopName: s.vendor.shopName },
+    })),
   };
 }

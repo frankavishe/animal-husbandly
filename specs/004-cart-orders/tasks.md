@@ -109,10 +109,10 @@ No new dependencies.
 **Goal**: Admins find any order and cancel undelivered parts.
 **Independent test**: Filter orders; cancelling CONFIRMED returns stock, DISPATCHED does not; both parties see the reason.
 
-- [ ] T034 [US5] Create `src/orders/dto/admin-order.dto.ts` (`AdminOrderDto`, paginated class, `AdminListOrdersQueryDto`: `status?, subOrderStatus?, vendorId?, customerId?, from?, to?` ISO dates), `toAdminOrder` in `src/orders/order.mapper.ts` with spec, and `src/orders/orders-admin.service.ts` (`list`, `get`, `cancelSubOrder`), exported from `src/orders/orders.module.ts`. `from` after `to` → 400; `to` includes its whole day; `subOrderStatus` with `vendorId` must match the same sub-order
-- [ ] T035 [US5] Create `src/admin/admin-orders.controller.ts` (`@Roles(ADMIN)`, `admin/orders`) with the 3 contract routes and Swagger responses; import `OrdersModule` in `src/admin/admin.module.ts`
-- [ ] T036 [US5] Unit tests in `src/orders/orders-admin.service.spec.ts`: filter composition, date bounds, cancel arguments
-- [ ] T037 [US5] E2E in `test/admin-orders.e2e-spec.ts`: US5 scenarios 1–5 including every filter; stock returned for PENDING and CONFIRMED and not for DISPATCHED; admin and time recorded; customer and vendor see the reason with actor `MARKETPLACE`
+- [x] T034 [US5] Create `src/orders/dto/admin-order.dto.ts` (`AdminOrderDto`, paginated class, `AdminListOrdersQueryDto`: `status?, subOrderStatus?, vendorId?, customerId?, from?, to?` ISO dates), `toAdminOrder` in `src/orders/order.mapper.ts` with spec, and `src/orders/orders-admin.service.ts` (`list`, `get`, `cancelSubOrder`), exported from `src/orders/orders.module.ts`. `from` after `to` → 400; `to` includes its whole day; `subOrderStatus` with `vendorId` must match the same sub-order
+- [x] T035 [US5] Create `src/admin/admin-orders.controller.ts` (`@Roles(ADMIN)`, `admin/orders`) with the 3 contract routes and Swagger responses; import `OrdersModule` in `src/admin/admin.module.ts`
+- [x] T036 [US5] Unit tests in `src/orders/orders-admin.service.spec.ts`: filter composition, date bounds, cancel arguments
+- [x] T037 [US5] E2E in `test/admin-orders.e2e-spec.ts`: US5 scenarios 1–5 including every filter; stock returned for PENDING and CONFIRMED and not for DISPATCHED; admin and time recorded; customer and vendor see the reason with actor `MARKETPLACE`
 
 ## Phase 8: Polish
 

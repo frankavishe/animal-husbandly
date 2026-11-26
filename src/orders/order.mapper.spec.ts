@@ -1,5 +1,5 @@
 import { OrderActorType, SubOrderStatus } from '@prisma/client';
-import { toCustomerOrder, toVendorOrder } from './order.mapper';
+import { toAdminOrder, toCustomerOrder, toVendorOrder } from './order.mapper';
 import { orderFixture, T0, vendorSubOrderFixture } from './order.fixtures-spec';
 
 describe('toCustomerOrder', () => {
@@ -163,5 +163,45 @@ describe('toVendorOrder', () => {
     );
     expect(dto.history[1].actor).toBe('MARKETPLACE');
     expect(JSON.stringify(dto)).not.toContain('Secret Admin');
+  });
+});
+
+describe('toAdminOrder', () => {
+  it('shows the customer, shops and real actors', () => {
+    const dto = toAdminOrder(
+      orderFixture([
+        {
+          status: SubOrderStatus.CANCELLED,
+          history: [{ actorType: OrderActorType.ADMIN, reason: 'Fraud' }],
+        },
+        {
+          status: SubOrderStatus.CANCELLED,
+          history: [{ actorType: OrderActorType.MARKETPLACE, reason: 'Late' }],
+        },
+      ]),
+    );
+    expect(dto.customer).toEqual({
+      id: 'customer-1',
+      fullName: 'Asha',
+      phone: '+255712345678',
+      email: null,
+    });
+    expect(dto.subOrders[0].vendor).toEqual({ id: 'vendor-0', slug: 'shop-0', shopName: 'Shop 0' });
+    expect(dto.subOrders[0].history.map((h) => [h.actor, h.actorUser])).toEqual([
+      ['CUSTOMER', { id: 'customer-1', fullName: 'Asha' }],
+      ['ADMIN', { id: 'actor-user', fullName: 'Secret Admin' }],
+    ]);
+    expect(dto.subOrders[1].history[1]).toMatchObject({ actor: 'MARKETPLACE', actorUser: null });
+    expect(Object.keys(dto).sort()).toEqual([
+      'createdAt',
+      'customer',
+      'deliveryAddress',
+      'id',
+      'orderNumber',
+      'paymentMethod',
+      'status',
+      'subOrders',
+      'total',
+    ]);
   });
 });
