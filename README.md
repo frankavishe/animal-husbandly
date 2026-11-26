@@ -12,6 +12,9 @@ Implemented so far:
   shops, logos and payout accounts.
 - **Phase 3 — listings** ([`specs/003-listings`](specs/003-listings)): listings and their lifecycle, photos,
   public browsing and admin moderation.
+- **Phase 4 — cart & orders** ([`specs/004-cart-orders`](specs/004-cart-orders)): a private cart, idempotent
+  cash-on-delivery checkout split per shop, vendor fulfilment, customer cancellation, 48-hour expiry and
+  admin oversight.
 
 ## Prerequisites
 
@@ -75,6 +78,7 @@ every missing/invalid key). See [`.env.example`](.env.example).
 | `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | — | required; object storage for logos and listing photos |
 | `S3_PUBLIC_BASE_URL` | — | required; logo and photo URLs are `<base>/<key>` |
 | `S3_FORCE_PATH_STYLE` | `true` | keep `true` for MinIO |
+| `ORDER_EXPIRY_INTERVAL_MS` | `300000` | 0–600000; how often unanswered orders are expired; `0` = off (tests) |
 
 ## API overview
 
@@ -95,6 +99,10 @@ Errors always have the shape
 | Listing photos | `POST /vendors/me/listings/:id/photos`, `DELETE /vendors/me/listings/:id/photos/:photoId`, `PUT /vendors/me/listings/:id/photos/order` |
 | Listings (public) | `GET /listings?species&listingType&regionId&districtId&shop&minPrice&maxPrice&inStock&search&sort`, `GET /listings/:id` |
 | Admin listings | `GET /admin/listings?status&vendorId&species&listingType`, `GET /admin/listings/:id`, `POST /admin/listings/:id/take-down` \| `restore` |
+| Cart | `GET` / `DELETE /cart`, `POST /cart/items`, `PATCH` / `DELETE /cart/items/:listingId` |
+| Orders | `POST /orders`, `GET /orders?status`, `GET /orders/:id`, `POST /orders/:id/sub-orders/:subOrderId/cancel` |
+| My shop's orders | `GET /vendors/me/orders?status`, `GET /vendors/me/orders/:id`, `POST /vendors/me/orders/:id/confirm` \| `dispatch` \| `deliver` \| `reject` \| `cancel` |
+| Admin orders | `GET /admin/orders?status&subOrderStatus&vendorId&customerId&from&to`, `GET /admin/orders/:id`, `POST /admin/orders/:id/sub-orders/:subOrderId/cancel` |
 | Health | `GET /health` (public) |
 
 ### Vendor lifecycle
@@ -138,6 +146,30 @@ DRAFT | ACTIVE | INACTIVE | TAKEN_DOWN ──archive──► ARCHIVED (irrevers
 - The public only sees `ACTIVE` listings of visible shops. Zero stock is shown as out of stock.
 - Photos: up to 5 per listing, JPEG/PNG/WebP up to 5 MB each, verified by content; the first is the cover.
 
+### Cart & orders
+
+```text
+place ──► PENDING ──confirm──► CONFIRMED ──dispatch──► DISPATCHED ──deliver──► DELIVERED (cash collected)
+            │                     │                       │
+            ├─ vendor reject ──► REJECTED                 │
+            ├─ customer cancel ─┐ ├─ vendor cancel ─┐     │
+            ├─ 48 h expiry ─────┤ │                 │     │
+            └─ admin cancel ────┴─┴─ admin cancel ──┴─────┴─ admin cancel ──► CANCELLED
+```
+
+- One cart per CUSTOMER or VENDOR, up to 50 lines; adding never reserves stock. Lines are flagged
+  `UNAVAILABLE`, `SHORT_OF_STOCK` or `PRICE_CHANGED`; unavailable lines are excluded from totals.
+- Checkout confirms every line (`listingId`, `quantity`, `unitPrice`) with a client-generated
+  `submissionKey`. It is all-or-nothing: line problems come back together as a 409 `message: string[]`;
+  a repeated key returns the same order. One sub-order per shop; the address and item details are copied.
+- Limits: order total ≤ 10,000,000,000 TZS; 10 OPEN orders per customer. Overall status is derived:
+  `OPEN` while any part is PENDING/CONFIRMED/DISPATCHED, else `COMPLETED` if any was delivered, else `CANCELLED`.
+- Rejecting or cancelling a PENDING or CONFIRMED part returns its stock exactly once (capped at 1,000,000,
+  listing status untouched); cancelling a DISPATCHED part does not. Reasons are 1–500 characters (optional
+  for customers). Customers and vendors see admin and automatic changes as `MARKETPLACE`.
+- Order rows are never deleted: listings, shops and users with orders cannot be deleted (RESTRICT), and the
+  status history is append-only.
+
 Refresh tokens look like `<sessionId>.<secret>`, are single-use, and are stored only as SHA-256 hashes.
 Presenting a token that was already used or revoked signs the user out everywhere. Access tokens of a
 revoked session are refused on the next request; after a normal refresh, the previous access token stays
@@ -152,8 +184,10 @@ src/auth/         register/login/refresh/logout/change-password, sessions, JWT s
 src/users/        profile, regions/districts, addresses
 src/common/storage/  StorageService (abstract) + S3 implementation
 src/vendors/      shop applications, public browsing, logo, payout account, admin review service
-src/listings/     listing rules, vendor CRUD + lifecycle, photos, public browsing, admin moderation service
-src/admin/        admin user, shop and listing management controllers
+src/listings/     listing rules, vendor CRUD + lifecycle, photos, public browsing, admin moderation, stock service
+src/cart/         cart service, mapper (flags, bigint totals) and controller
+src/orders/       checkout, status rules and transitions, customer/vendor/admin order services, expiry job
+src/admin/        admin user, shop, listing and order management controllers
 test/             e2e specs and harness
 ```
 

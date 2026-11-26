@@ -95,6 +95,23 @@ describe('Foundation (US4)', () => {
         `${API}/admin/listings/{id}`,
         `${API}/admin/listings/{id}/take-down`,
         `${API}/admin/listings/{id}/restore`,
+        // Phase 4 — cart & orders (SC-008)
+        `${API}/cart`,
+        `${API}/cart/items`,
+        `${API}/cart/items/{listingId}`,
+        `${API}/orders`,
+        `${API}/orders/{id}`,
+        `${API}/orders/{id}/sub-orders/{subOrderId}/cancel`,
+        `${API}/vendors/me/orders`,
+        `${API}/vendors/me/orders/{id}`,
+        `${API}/vendors/me/orders/{id}/confirm`,
+        `${API}/vendors/me/orders/{id}/dispatch`,
+        `${API}/vendors/me/orders/{id}/deliver`,
+        `${API}/vendors/me/orders/{id}/reject`,
+        `${API}/vendors/me/orders/{id}/cancel`,
+        `${API}/admin/orders`,
+        `${API}/admin/orders/{id}`,
+        `${API}/admin/orders/{id}/sub-orders/{subOrderId}/cancel`,
       ]),
     );
     const vendorsMe = res.body.paths[`${API}/vendors/me`] as Record<string, unknown>;
@@ -107,6 +124,22 @@ describe('Foundation (US4)', () => {
       post: { requestBody: { content: Record<string, unknown> } };
     };
     expect(Object.keys(photos.post.requestBody.content)).toEqual(['multipart/form-data']);
+    // 19 Phase 4 operations: 5 cart, 4 customer, 7 vendor, 3 admin.
+    const ops = (path: string) => Object.keys(res.body.paths[`${API}${path}`] as object).sort();
+    expect(ops('/cart')).toEqual(['delete', 'get']);
+    expect(ops('/cart/items')).toEqual(['post']);
+    expect(ops('/cart/items/{listingId}')).toEqual(['delete', 'patch']);
+    expect(ops('/orders')).toEqual(['get', 'post']);
+    expect(ops('/orders/{id}')).toEqual(['get']);
+    expect(ops('/orders/{id}/sub-orders/{subOrderId}/cancel')).toEqual(['post']);
+    expect(ops('/vendors/me/orders')).toEqual(['get']);
+    expect(ops('/vendors/me/orders/{id}')).toEqual(['get']);
+    for (const action of ['confirm', 'dispatch', 'deliver', 'reject', 'cancel']) {
+      expect(ops(`/vendors/me/orders/{id}/${action}`)).toEqual(['post']);
+    }
+    expect(ops('/admin/orders')).toEqual(['get']);
+    expect(ops('/admin/orders/{id}')).toEqual(['get']);
+    expect(ops('/admin/orders/{id}/sub-orders/{subOrderId}/cancel')).toEqual(['post']);
     await ctx.http().get('/docs').expect(200);
   });
 });

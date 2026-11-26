@@ -15,7 +15,8 @@ export function configureApp(app: INestApplication): INestApplication {
   const config = new DocumentBuilder()
     .setTitle('Animal Husbandry Marketplace API')
     .setDescription(
-      'Multi-vendor livestock and animal-products marketplace for Tanzania: accounts, vendor shops and listings',
+      'Multi-vendor livestock and animal-products marketplace for Tanzania: accounts, vendor shops, ' +
+        'listings, cart and cash-on-delivery orders. Money is whole TZS as JSON integers.',
     )
     .setVersion('1.0')
     .addBearerAuth()

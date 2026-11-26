@@ -116,7 +116,7 @@ No new dependencies.
 
 ## Phase 8: Polish
 
-- [ ] T038 [P] Add a Cart & Orders section and Phase 4 to `README.md`, extend the Swagger description in `src/app.setup.ts`, and add every new path to the `/docs-json` check in `test/foundation.e2e-spec.ts` (SC-008)
+- [x] T038 [P] Add a Cart & Orders section and Phase 4 to `README.md`, extend the Swagger description in `src/app.setup.ts`, and add every new path to the `/docs-json` check in `test/foundation.e2e-spec.ts` (SC-008)
 - [ ] T039 Check SC-007 with a throwaway script outside the repository (10,000 seeded orders in a disposable database, 100 concurrent users; cart, checkout and order pages p95 < 1 s); record the result in `specs/004-cart-orders/quickstart.md`
 - [ ] T040 Run `npm run lint`, `npm run build`, `npm test` and `npm run test:e2e`, then the manual scenarios in `specs/004-cart-orders/quickstart.md`, timing one purchase (SC-001 < 2 minutes); report actual results
 
