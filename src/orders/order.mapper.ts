@@ -7,6 +7,7 @@ import {
   OrderItemDto,
   PublicActor,
   SubOrderDto,
+  VendorOrderDto,
 } from './dto';
 import { orderNumber, overallStatus } from './order-status';
 
@@ -113,5 +114,35 @@ export function toCustomerOrder(o: OrderWithRelations): CustomerOrderDto {
       shopSlug: s.vendor.slug,
     })),
     createdAt: o.createdAt,
+  };
+}
+
+/** A sub-order with the order fields a vendor may see. */
+export const vendorSubOrderInclude = {
+  ...subOrderInclude,
+  order: {
+    select: {
+      seq: true,
+      paymentMethod: true,
+      recipientName: true,
+      contactPhone: true,
+      regionName: true,
+      districtName: true,
+      wardStreet: true,
+      landmark: true,
+      createdAt: true,
+    },
+  },
+} satisfies Prisma.SubOrderInclude;
+
+export type VendorSubOrder = Prisma.SubOrderGetPayload<{ include: typeof vendorSubOrderInclude }>;
+
+export function toVendorOrder(s: VendorSubOrder): VendorOrderDto {
+  return {
+    ...toSubOrder(s),
+    orderNumber: orderNumber(s.order.seq),
+    paymentMethod: s.order.paymentMethod,
+    deliveryAddress: toAddress(s.order),
+    createdAt: s.order.createdAt,
   };
 }

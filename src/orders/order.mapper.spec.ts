@@ -1,5 +1,5 @@
 import { OrderActorType, SubOrderStatus } from '@prisma/client';
-import { toCustomerOrder } from './order.mapper';
+import { toCustomerOrder, toVendorOrder } from './order.mapper';
 import { orderFixture, T0 } from './order.fixtures-spec';
 
 describe('toCustomerOrder', () => {
@@ -96,5 +96,70 @@ describe('toCustomerOrder', () => {
       'reason',
       'toStatus',
     ]);
+  });
+});
+
+describe('toVendorOrder', () => {
+  function vendorSub() {
+    const order = orderFixture([
+      {
+        status: SubOrderStatus.REJECTED,
+        history: [{ actorType: OrderActorType.VENDOR, reason: 'No stock left' }],
+      },
+      { status: SubOrderStatus.PENDING },
+    ]);
+    const { subOrders, customer: _customer, ...rest } = order;
+    return { ...subOrders[0], order: rest };
+  }
+
+  it('shows the own part, order number and delivery details, with the latest reason', () => {
+    const dto = toVendorOrder(vendorSub());
+    expect(dto).toMatchObject({
+      id: 'sub-0',
+      orderNumber: 'ORD-00000042',
+      paymentMethod: 'CASH_ON_DELIVERY',
+      status: 'REJECTED',
+      subtotal: 1_500_000,
+      reason: 'No stock left',
+      deliveryAddress: { recipientName: 'Asha Mushi', contactPhone: '+255712345678' },
+      createdAt: T0,
+    });
+    expect(dto.history.map((h) => h.actor)).toEqual(['CUSTOMER', 'VENDOR']);
+  });
+
+  it('exposes no order total, other shops, customer account or actor ids', () => {
+    const dto = toVendorOrder(vendorSub());
+    expect(Object.keys(dto).sort()).toEqual([
+      'cashCollectedAt',
+      'createdAt',
+      'deliveryAddress',
+      'history',
+      'id',
+      'items',
+      'orderNumber',
+      'paymentMethod',
+      'reason',
+      'shopName',
+      'status',
+      'subtotal',
+      'updatedAt',
+    ]);
+    const json = JSON.stringify(dto);
+    for (const hidden of ['customer-1', 'actor-user', 'sub-1', 'Shop 1', '3000000', 'order-1']) {
+      expect(json).not.toContain(hidden);
+    }
+  });
+
+  it('shows an admin cancellation as MARKETPLACE', () => {
+    const order = orderFixture([
+      {
+        status: SubOrderStatus.CANCELLED,
+        history: [{ actorType: OrderActorType.ADMIN, reason: 'Fraud' }],
+      },
+    ]);
+    const { subOrders, customer: _customer, ...rest } = order;
+    const dto = toVendorOrder({ ...subOrders[0], order: rest });
+    expect(dto.history[1].actor).toBe('MARKETPLACE');
+    expect(JSON.stringify(dto)).not.toContain('Secret Admin');
   });
 });

@@ -7,10 +7,12 @@ import { CheckoutService } from './checkout.service';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { SubOrderTransitionsService } from './sub-order-transitions.service';
+import { VendorOrdersController } from './vendor-orders.controller';
+import { VendorOrdersService } from './vendor-orders.service';
 
 @Module({
   imports: [CartModule, ListingsModule, UsersModule, VendorsModule],
-  controllers: [OrdersController],
-  providers: [SubOrderTransitionsService, CheckoutService, OrdersService],
+  controllers: [OrdersController, VendorOrdersController],
+  providers: [SubOrderTransitionsService, CheckoutService, OrdersService, VendorOrdersService],
 })
 export class OrdersModule {}

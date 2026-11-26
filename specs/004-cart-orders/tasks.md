@@ -88,11 +88,11 @@ No new dependencies.
 **Goal**: Vendors progress, reject or cancel their own sub-orders.
 **Independent test**: One sub-order to DELIVERED, one rejected with stock returned; another vendor sees neither.
 
-- [ ] T025 [P] [US3] Add `VendorOrderDto`, its paginated class, `VendorListOrdersQueryDto` (`status?: SubOrderStatus`) and `OrderReasonDto` (`@IsReason()`) in `src/orders/dto/vendor-order.dto.ts`, and `toVendorOrder` in `src/orders/order.mapper.ts` with spec (no order total, other shops, customer account or actor ids)
-- [ ] T026 [US3] Create `src/orders/vendor-orders.service.ts`: `list` (newest first, then id, paginated), `get`, `confirm`, `dispatch`, `deliver`, `reject`, `cancel`, using `VendorsService.findMine` (any shop status) and `SubOrderTransitionsService` scoped by `vendorId`
-- [ ] T027 [US3] Create `src/orders/vendor-orders.controller.ts` (`@Roles(VENDOR)`, `vendors/me/orders`): the 7 contract routes, actions returning 200, with Swagger responses; register in `src/orders/orders.module.ts`
-- [ ] T028 [US3] Unit tests in `src/orders/vendor-orders.service.spec.ts`: scoping, filters, each action's arguments
-- [ ] T029 [US3] E2E in `test/vendor-orders.e2e-spec.ts`: US3 scenarios 1–9; response key whitelist; suspended shop can progress, reject and cancel; customer and admin 403; returned stock on ARCHIVED, INACTIVE and TAKEN_DOWN listings keeps their status and is capped at 1,000,000; simultaneous confirm and reject → one 200, one 409
+- [x] T025 [P] [US3] Add `VendorOrderDto`, its paginated class, `VendorListOrdersQueryDto` (`status?: SubOrderStatus`) and `OrderReasonDto` (`@IsReason()`) in `src/orders/dto/vendor-order.dto.ts`, and `toVendorOrder` in `src/orders/order.mapper.ts` with spec (no order total, other shops, customer account or actor ids)
+- [x] T026 [US3] Create `src/orders/vendor-orders.service.ts`: `list` (newest first, then id, paginated), `get`, `confirm`, `dispatch`, `deliver`, `reject`, `cancel`, using `VendorsService.findMine` (any shop status) and `SubOrderTransitionsService` scoped by `vendorId`
+- [x] T027 [US3] Create `src/orders/vendor-orders.controller.ts` (`@Roles(VENDOR)`, `vendors/me/orders`): the 7 contract routes, actions returning 200, with Swagger responses; register in `src/orders/orders.module.ts`
+- [x] T028 [US3] Unit tests in `src/orders/vendor-orders.service.spec.ts`: scoping, filters, each action's arguments
+- [x] T029 [US3] E2E in `test/vendor-orders.e2e-spec.ts`: US3 scenarios 1–9; response key whitelist; suspended shop can progress, reject and cancel; customer and admin 403; returned stock on ARCHIVED, INACTIVE and TAKEN_DOWN listings keeps their status and is capped at 1,000,000; simultaneous confirm and reject → one 200, one 409
 
 ## Phase 6: User Story 4: Follow and cancel my orders (P2)
 
