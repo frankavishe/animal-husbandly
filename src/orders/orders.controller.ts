@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -12,7 +22,13 @@ import {
 import { Role } from '@prisma/client';
 import { AuthUser, CurrentUser, Roles } from '../common/decorators';
 import { CheckoutService } from './checkout.service';
-import { CheckoutDto, CustomerOrderDto } from './dto';
+import {
+  CancelSubOrderDto,
+  CheckoutDto,
+  CustomerListOrdersQueryDto,
+  CustomerOrderDto,
+  PaginatedCustomerOrdersDto,
+} from './dto';
 import { OrdersService } from './orders.service';
 
 @ApiTags('orders')
@@ -44,6 +60,16 @@ export class OrdersController {
     return this.checkoutService.checkout(user.id, dto);
   }
 
+  @Get()
+  @ApiOperation({ summary: 'My orders, newest first, filterable by overall status' })
+  @ApiOkResponse({ type: PaginatedCustomerOrdersDto })
+  list(
+    @CurrentUser() user: AuthUser,
+    @Query() q: CustomerListOrdersQueryDto,
+  ): Promise<PaginatedCustomerOrdersDto> {
+    return this.orders.list(user.id, q);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'One of my orders with sub-orders, items and status history' })
   @ApiOkResponse({ type: CustomerOrderDto })
@@ -53,5 +79,21 @@ export class OrdersController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<CustomerOrderDto> {
     return this.orders.get(user.id, id);
+  }
+
+  @Post(':id/sub-orders/:subOrderId/cancel')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Cancel a shop's PENDING part of my order; stock is returned" })
+  @ApiOkResponse({ type: CustomerOrderDto })
+  @ApiBadRequestResponse({ description: 'Reason above 500 characters' })
+  @ApiNotFoundResponse({ description: 'Order not found' })
+  @ApiConflictResponse({ description: 'Not PENDING' })
+  cancelSubOrder(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('subOrderId', ParseUUIDPipe) subOrderId: string,
+    @Body() dto: CancelSubOrderDto,
+  ): Promise<CustomerOrderDto> {
+    return this.orders.cancelSubOrder(user.id, id, subOrderId, dto.reason);
   }
 }
