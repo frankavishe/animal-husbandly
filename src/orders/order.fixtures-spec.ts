@@ -82,3 +82,21 @@ export function orderFixture(
     })),
   };
 }
+
+/** Test-only: sub-order `index` of `order` as `vendorSubOrderInclude` returns it. */
+export function vendorSubOrderFixture(order: OrderWithRelations = orderFixture(), index = 0) {
+  return {
+    ...order.subOrders[index],
+    order: {
+      seq: order.seq,
+      paymentMethod: order.paymentMethod,
+      recipientName: order.recipientName,
+      contactPhone: order.contactPhone,
+      regionName: order.regionName,
+      districtName: order.districtName,
+      wardStreet: order.wardStreet,
+      landmark: order.landmark,
+      createdAt: order.createdAt,
+    },
+  };
+}

@@ -1,15 +1,12 @@
 import { NotFoundException } from '@nestjs/common';
 import { SubOrderStatus } from '@prisma/client';
-import { orderFixture } from './order.fixtures-spec';
+import { vendorSubOrderFixture } from './order.fixtures-spec';
 import { VendorOrdersService } from './vendor-orders.service';
 
 const USER = 'vendor-user';
 const VENDOR = 'vendor-0';
 
-function vendorSub() {
-  const { subOrders, customer: _customer, ...rest } = orderFixture();
-  return { ...subOrders[0], order: rest };
-}
+const vendorSub = () => vendorSubOrderFixture();
 
 describe('VendorOrdersService', () => {
   let prisma: any;

@@ -1,6 +1,6 @@
 import { OrderActorType, SubOrderStatus } from '@prisma/client';
 import { toCustomerOrder, toVendorOrder } from './order.mapper';
-import { orderFixture, T0 } from './order.fixtures-spec';
+import { orderFixture, T0, vendorSubOrderFixture } from './order.fixtures-spec';
 
 describe('toCustomerOrder', () => {
   it('maps numbers, order number, address and overall status', () => {
@@ -101,15 +101,15 @@ describe('toCustomerOrder', () => {
 
 describe('toVendorOrder', () => {
   function vendorSub() {
-    const order = orderFixture([
-      {
-        status: SubOrderStatus.REJECTED,
-        history: [{ actorType: OrderActorType.VENDOR, reason: 'No stock left' }],
-      },
-      { status: SubOrderStatus.PENDING },
-    ]);
-    const { subOrders, customer: _customer, ...rest } = order;
-    return { ...subOrders[0], order: rest };
+    return vendorSubOrderFixture(
+      orderFixture([
+        {
+          status: SubOrderStatus.REJECTED,
+          history: [{ actorType: OrderActorType.VENDOR, reason: 'No stock left' }],
+        },
+        { status: SubOrderStatus.PENDING },
+      ]),
+    );
   }
 
   it('shows the own part, order number and delivery details, with the latest reason', () => {
@@ -151,14 +151,16 @@ describe('toVendorOrder', () => {
   });
 
   it('shows an admin cancellation as MARKETPLACE', () => {
-    const order = orderFixture([
-      {
-        status: SubOrderStatus.CANCELLED,
-        history: [{ actorType: OrderActorType.ADMIN, reason: 'Fraud' }],
-      },
-    ]);
-    const { subOrders, customer: _customer, ...rest } = order;
-    const dto = toVendorOrder({ ...subOrders[0], order: rest });
+    const dto = toVendorOrder(
+      vendorSubOrderFixture(
+        orderFixture([
+          {
+            status: SubOrderStatus.CANCELLED,
+            history: [{ actorType: OrderActorType.ADMIN, reason: 'Fraud' }],
+          },
+        ]),
+      ),
+    );
     expect(dto.history[1].actor).toBe('MARKETPLACE');
     expect(JSON.stringify(dto)).not.toContain('Secret Admin');
   });
