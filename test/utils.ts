@@ -370,3 +370,29 @@ export async function getStock(ctx: TestContext, listingId: string): Promise<num
   });
   return l.stockQuantity;
 }
+
+/** An approved shop with one ACTIVE listing (stock 10 unless overridden). */
+export async function shopWithListing(
+  ctx: TestContext,
+  adminToken: string,
+  overrides: Partial<ListingBody> = {},
+): Promise<{
+  token: string;
+  userId: string;
+  vendor: { id: string; slug: string; status: string };
+  listingId: string;
+}> {
+  const { user, vendor } = await createVendor(ctx, adminToken, { approve: true });
+  const listing = await createListing(ctx, user.accessToken, { stockQuantity: 10, ...overrides });
+  await publishListing(ctx, user.accessToken, listing.id);
+  return { token: user.accessToken, userId: user.id, vendor, listingId: listing.id as string };
+}
+
+/** A newly registered customer with one saved address. */
+export async function buyerWithAddress(
+  ctx: TestContext,
+): Promise<RegisteredUser & { token: string; addressId: string }> {
+  const user = await registerUser(ctx);
+  const addressId = await createAddress(ctx, user.accessToken);
+  return { ...user, token: user.accessToken, addressId };
+}

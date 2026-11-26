@@ -48,8 +48,16 @@ export class AddressesService {
     return rows.map(toResponse);
   }
 
-  async get(userId: string, id: string): Promise<AddressResponseDto> {
-    return toResponse(await this.findOwned(userId, id));
+  /**
+   * One of the user's addresses, or 404. Pass `tx` to read inside the caller's transaction (checkout
+   * must not wait for a second pool connection while holding one).
+   */
+  async get(
+    userId: string,
+    id: string,
+    tx: Prisma.TransactionClient = this.prisma,
+  ): Promise<AddressResponseDto> {
+    return toResponse(await this.findOwned(userId, id, tx));
   }
 
   async create(userId: string, dto: CreateAddressDto): Promise<AddressResponseDto> {
@@ -127,8 +135,12 @@ export class AddressesService {
     });
   }
 
-  private async findOwned(userId: string, id: string): Promise<AddressWithRefs> {
-    const address = await this.prisma.address.findFirst({ where: { id, userId }, include });
+  private async findOwned(
+    userId: string,
+    id: string,
+    client: Prisma.TransactionClient = this.prisma,
+  ): Promise<AddressWithRefs> {
+    const address = await client.address.findFirst({ where: { id, userId }, include });
     if (!address) throw new NotFoundException('Address not found');
     return address;
   }

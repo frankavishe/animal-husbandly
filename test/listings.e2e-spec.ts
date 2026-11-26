@@ -579,4 +579,26 @@ describe('Listings', () => {
       await ctx.http().get(`${API}/listings?species=DOG`).expect(400);
     });
   });
+  // ------------------------------------------------------------------------------ FR-032
+  describe('stock edits (Phase 4 FR-032)', () => {
+    it('PATCH without stockQuantity leaves stock unchanged; an explicit value replaces it', async () => {
+      const v = await approvedVendor();
+      const l = (await post(v.token, validListingBody({ stockQuantity: 7 })).expect(201)).body;
+      await ctx.prisma.listing.update({ where: { id: l.id }, data: { stockQuantity: 4 } });
+      const res = await ctx
+        .http()
+        .patch(`${LISTINGS}/${l.id}`)
+        .set(bearer(v.token))
+        .send({ title: 'Renamed', unitPrice: 1500000 })
+        .expect(200);
+      expect(res.body.stockQuantity).toBe(4);
+      const set = await ctx
+        .http()
+        .patch(`${LISTINGS}/${l.id}`)
+        .set(bearer(v.token))
+        .send({ stockQuantity: 9 })
+        .expect(200);
+      expect(set.body.stockQuantity).toBe(9);
+    });
+  });
 });
